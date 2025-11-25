@@ -1,0 +1,29 @@
+{
+  "name": "fsbo-scraper",
+  "version": "1.0.0",
+  "description": "Microserviço para extrair informações de anúncios FSBO (For Sale By Owner)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node tests/test.js"
+  },
+  "keywords": [
+    "scraper",
+    "playwright",
+    "real-estate",
+    "fsbo",
+    "for-sale-by-owner"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "playwright": "^1.40.0",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}
+
+
