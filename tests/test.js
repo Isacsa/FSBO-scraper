@@ -51,4 +51,11 @@ textTests.forEach(text => {
 
 console.log('\n✅ Tests completed!');
 
+// CLI / run-scraper tests
+require('./run-scraper.test');
+
+// Pipeline tests
+require('./pipeline-score.test');
+require('./pipeline-dedupe.test');
+
 

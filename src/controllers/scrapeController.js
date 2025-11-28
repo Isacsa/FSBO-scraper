@@ -6,6 +6,9 @@
 const { detectPlatform } = require('../utils/selectors');
 const scrapeOLX = require('../scrapers/olx');
 const scrapeImovirtual = require('../scrapers/imovirtual');
+const scrapeIdealistaLobstr = require('../scrapers/idealista_lobstr/idealista.scraper');
+const scrapeCustoJusto = require('../scrapers/custojusto/custojusto.scraper');
+const scrapeCasaSapo = require('../scrapers/casasapo/casasapo.scraper');
 const { formatSuccess, formatError, createError, ERROR_TYPES } = require('../utils/responseFormatter');
 const logger = require('../utils/logger');
 
@@ -41,14 +44,14 @@ async function scrapeController(req, res) {
   try {
     // Extrair URL do body
     url = req.body?.url || req.query?.url;
-    
+
     if (!url) {
       const error = createError(ERROR_TYPES.VALIDATION_ERROR, 'URL parameter is required');
       const response = formatError(error, null, null, startTime);
       logger.error('CONTROLLER', `Validation error: ${response.message}`, { url });
       return res.status(200).json(response);
     }
-    
+
     // Validar URL
     try {
       validateUrl(url);
@@ -57,7 +60,7 @@ async function scrapeController(req, res) {
       logger.error('CONTROLLER', `URL validation failed: ${response.message}`, { url });
       return res.status(200).json(response);
     }
-    
+
     // Detectar plataforma
     try {
       platform = detectPlatform(url);
@@ -85,6 +88,51 @@ async function scrapeController(req, res) {
         result = await scrapeOLX(url, options);
       } else if (platform === 'imovirtual') {
         result = await scrapeImovirtual(url, options);
+      } else if (platform === 'idealista') {
+        // Idealista via Lobstr retorna { success, total_results, items }
+        const lobstrResult = await scrapeIdealistaLobstr(url, {
+          maxResults: req.body?.max_results || null,
+          maxWait: options.timeout || 600000 // 10 minutos
+        });
+        
+        // Para compatibilidade com API de anúncio individual, retornar primeiro item
+        // Se não houver items, lançar erro
+        if (!lobstrResult.items || lobstrResult.items.length === 0) {
+          throw createError(ERROR_TYPES.SCRAPER_ERROR, 'Nenhum listing encontrado');
+        }
+        
+        // Retornar primeiro listing (compatibilidade com formato de anúncio individual)
+        result = lobstrResult.items[0];
+      } else if (platform === 'custojusto') {
+        // CustoJusto retorna { success, new_ads, total_new, all_ads }
+        const custojustoResult = await scrapeCustoJusto(url, {
+          onlyNew: req.body?.only_new === true,
+          maxPages: req.body?.max_pages || null,
+          maxAds: req.body?.max_ads || null
+        });
+        
+        // Para compatibilidade com API de anúncio individual, retornar primeiro item
+        if (!custojustoResult.all_ads || custojustoResult.all_ads.length === 0) {
+          throw createError(ERROR_TYPES.SCRAPER_ERROR, 'Nenhum anúncio encontrado');
+        }
+        
+        // Retornar primeiro anúncio (compatibilidade com formato de anúncio individual)
+        result = custojustoResult.all_ads[0];
+      } else if (platform === 'casasapo') {
+        // Casa Sapo retorna { success, new_ads, total_new, items }
+        const casasapoResult = await scrapeCasaSapo(url, {
+          onlyNew: req.body?.only_new === true,
+          maxPages: req.body?.max_pages || null,
+          maxAds: req.body?.max_ads || null
+        });
+        
+        // Para compatibilidade com API de anúncio individual, retornar primeiro item
+        if (!casasapoResult.items || casasapoResult.items.length === 0) {
+          throw createError(ERROR_TYPES.SCRAPER_ERROR, 'Nenhum anúncio encontrado');
+        }
+        
+        // Retornar primeiro anúncio (compatibilidade com formato de anúncio individual)
+        result = casasapoResult.items[0];
       } else {
         throw createError(ERROR_TYPES.UNSUPPORTED_PLATFORM, `Platform '${platform}' is not supported`);
       }
@@ -110,7 +158,7 @@ async function scrapeController(req, res) {
     
     // Sempre retornar HTTP 200, mesmo em caso de erro
     return res.status(200).json(response);
-    
+
   } catch (error) {
     // Erro inesperado (fatal)
     const response = formatError(error, platform, url, startTime, ERROR_TYPES.FATAL);
