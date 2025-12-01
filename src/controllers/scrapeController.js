@@ -4,8 +4,8 @@
  */
 
 const { detectPlatform } = require('../utils/selectors');
-const scrapeOLX = require('../scrapers/olx');
-const scrapeImovirtual = require('../scrapers/imovirtual');
+const scrapeOLX = require('../scrapers/olx/olx.scraper'); // Novo scraper com suporte a listagens
+const scrapeImovirtual = require('../scrapers/imovirtual/imovirtual.scraper'); // Novo scraper com suporte a listagens
 const scrapeIdealistaLobstr = require('../scrapers/idealista_lobstr/idealista.scraper');
 const scrapeCustoJusto = require('../scrapers/custojusto/custojusto.scraper');
 const scrapeCasaSapo = require('../scrapers/casasapo/casasapo.scraper');
@@ -90,9 +90,40 @@ async function scrapeController(req, res) {
     let result;
     try {
       if (platform === 'olx') {
-        result = await scrapeOLX(url, options);
+        // OLX agora suporta listagens e filtra agências automaticamente
+        const olxOptions = {
+          ...options,
+          onlyNew: req.body?.only_new === true,
+          maxPages: req.body?.max_pages || null,
+          maxAds: req.body?.max_ads || null,
+          filterAgencies: true // Filtrar agências automaticamente
+        };
+        result = await scrapeOLX(url, olxOptions);
+        
+        // Se for listagem, retornar primeiro item para compatibilidade
+        if (result && result.all_ads && result.all_ads.length > 0) {
+          result = result.all_ads[0];
+        } else if (result && result.fsbo_ads && result.fsbo_ads.length > 0) {
+          result = result.fsbo_ads[0];
+        }
       } else if (platform === 'imovirtual') {
-        result = await scrapeImovirtual(url, options);
+        // Imovirtual agora suporta listagens e preserva filtro PRIVATE
+        const imovirtualOptions = {
+          ...options,
+          onlyNew: req.body?.only_new === true,
+          maxPages: req.body?.max_pages || null,
+          maxAds: req.body?.max_ads || null
+        };
+        const imovirtualResult = await scrapeImovirtual(url, imovirtualOptions);
+        
+        // Se for listagem, retornar primeiro item para compatibilidade
+        if (imovirtualResult && imovirtualResult.all_ads && imovirtualResult.all_ads.length > 0) {
+          result = imovirtualResult.all_ads[0];
+        } else if (imovirtualResult && imovirtualResult.new_ads && imovirtualResult.new_ads.length > 0) {
+          result = imovirtualResult.new_ads[0];
+        } else {
+          result = imovirtualResult;
+        }
       } else if (platform === 'idealista') {
         // Idealista via Lobstr retorna { success, total_results, items }
         const lobstrResult = await scrapeIdealistaLobstr(url, {

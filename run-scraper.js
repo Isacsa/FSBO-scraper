@@ -142,9 +142,11 @@ async function loadScraper(platform) {
 
   switch (platform) {
     case 'olx':
-      return require('./src/scrapers/olx');
+      // Usar novo scraper que suporta listagens e filtra agências
+      return require('./src/scrapers/olx/olx.scraper');
     case 'imovirtual':
-      return require('./src/scrapers/imovirtual');
+      // Usar novo scraper que suporta listagens e preserva filtro PRIVATE
+      return require('./src/scrapers/imovirtual/imovirtual.scraper');
     case 'idealista':
       return require('./src/scrapers/idealista_lobstr/idealista.scraper');
     case 'custojusto':
@@ -206,11 +208,42 @@ async function run() {
 
   try {
     if (args.platform === 'olx') {
-      const data = await scraperModule(args.url, { headless: effectiveHeadless });
-      results = [normalizeFinalObject(data)];
+      // OLX agora suporta listagens e filtra agências automaticamente
+      rawResponse = await scraperModule(args.url, {
+        onlyNew,
+        maxPages: args.maxPages || null,
+        maxAds: args.maxAds || null,
+        headless: effectiveHeadless,
+        filterAgencies: true // Filtrar agências automaticamente
+      });
+      
+      // Se for listagem, retornar array; se for anúncio individual, retornar objeto único
+      if (rawResponse && rawResponse.all_ads) {
+        // Listagem
+        const ads = rawResponse.all_ads || rawResponse.new_ads || [];
+        results = ads.map(item => normalizeFinalObject(item));
+      } else {
+        // Anúncio individual
+        results = [normalizeFinalObject(rawResponse)];
+      }
     } else if (args.platform === 'imovirtual') {
-      const data = await scraperModule(args.url, { headless: effectiveHeadless });
-      results = [normalizeFinalObject(data)];
+      // Imovirtual agora suporta listagens e preserva filtro PRIVATE
+      rawResponse = await scraperModule(args.url, {
+        onlyNew,
+        maxPages: args.maxPages || null,
+        maxAds: args.maxAds || null,
+        headless: effectiveHeadless
+      });
+      
+      // Se for listagem, retornar array; se for anúncio individual, retornar objeto único
+      if (rawResponse && rawResponse.all_ads) {
+        // Listagem
+        const ads = rawResponse.all_ads || rawResponse.new_ads || [];
+        results = ads.map(item => normalizeFinalObject(item));
+      } else {
+        // Anúncio individual
+        results = [normalizeFinalObject(rawResponse)];
+      }
     } else if (args.platform === 'idealista') {
       rawResponse = await scraperModule(args.url, { maxResults: args.maxAds || null });
       results = (rawResponse.items || []).map(item => normalizeFinalObject(item));

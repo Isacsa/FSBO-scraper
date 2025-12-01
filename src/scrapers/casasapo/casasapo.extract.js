@@ -310,36 +310,78 @@ async function extractAdDetails(adUrl, options = {}) {
       }
       
       // Preço - procurar em elementos específicos do Casa Sapo
+      // Estratégia 1: Procurar por elementos com classes específicas do CasaSapo
       const priceSelectors = [
         '[class*="price"]',
         '[class*="Price"]',
+        '[class*="valor"]',
+        '[class*="cost"]',
         '[itemprop="price"]',
-        'strong:has-text("€")',
-        'div:has-text("€")'
+        '[data-price]',
+        'strong',
+        'h2',
+        'h3',
+        '.property-price',
+        '.ad-price',
+        '[id*="price"]'
       ];
+      
       for (const selector of priceSelectors) {
         try {
-          const priceEl = document.querySelector(selector);
-          if (priceEl) {
+          const priceEls = document.querySelectorAll(selector);
+          for (const priceEl of priceEls) {
             const priceText = priceEl.textContent?.trim() || '';
-            const priceMatch = priceText.match(/(\d{1,3}(?:\s?\d{3})*)\s*€/);
-            if (priceMatch) {
-              data.price = priceMatch[0].trim();
-              break;
+            // Padrão mais flexível: números com espaços/pontos e símbolo €
+            const priceMatch = priceText.match(/(\d{1,3}(?:[\s.]?\d{3})*)\s*€/);
+            if (priceMatch && priceMatch[1]) {
+              // Verificar se não é um número muito pequeno (provavelmente não é preço)
+              const numValue = parseInt(priceMatch[1].replace(/[\s.]/g, ''));
+              if (numValue > 1000) { // Preços de imóveis geralmente são > 1000€
+                data.price = priceMatch[0].trim();
+                break;
+              }
             }
           }
+          if (data.price) break;
         } catch (e) {
           // Continuar
         }
       }
       
-      // Fallback: procurar no texto da página
+      // Estratégia 2: Procurar no header/top da página (onde geralmente está o preço)
       if (!data.price) {
-        const pricePattern = /(\d{1,3}(?:\s?\d{3})*)\s*€/;
+        const headerSelectors = ['header', '[class*="header"]', '[class*="top"]', '[class*="summary"]'];
+        for (const headerSelector of headerSelectors) {
+          const header = document.querySelector(headerSelector);
+          if (header) {
+            const headerText = header.textContent || '';
+            const priceMatch = headerText.match(/(\d{1,3}(?:[\s.]?\d{3})*)\s*€/);
+            if (priceMatch && priceMatch[1]) {
+              const numValue = parseInt(priceMatch[1].replace(/[\s.]/g, ''));
+              if (numValue > 1000) {
+                data.price = priceMatch[0].trim();
+                break;
+              }
+            }
+          }
+        }
+      }
+      
+      // Estratégia 3: Fallback - procurar no texto completo da página (mas com validação)
+      if (!data.price) {
+        const pricePattern = /(\d{1,3}(?:[\s.]?\d{3})*)\s*€/g;
         const bodyText = document.body.textContent;
-        const priceMatch = bodyText.match(pricePattern);
-        if (priceMatch) {
-          data.price = priceMatch[0].trim();
+        const matches = [...bodyText.matchAll(pricePattern)];
+        
+        // Filtrar matches válidos (preços razoáveis)
+        for (const match of matches) {
+          if (match[1]) {
+            const numValue = parseInt(match[1].replace(/[\s.]/g, ''));
+            if (numValue > 1000 && numValue < 100000000) { // Entre 1k e 100M
+              data.price = match[0].trim();
+              break;
+            }
+          }
         }
       }
       

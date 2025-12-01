@@ -222,6 +222,18 @@ async function extractAllListingUrls(listingUrl, options = {}) {
   console.log('[CustoJusto Extract] 📋 Iniciando extração de listagem...');
   console.log(`[CustoJusto Extract] URL: ${listingUrl}`);
   
+  // Validar e garantir que f=p está presente (filtro de particulares)
+  const urlObj = new URL(listingUrl);
+  const searchParams = new URLSearchParams(urlObj.search);
+  if (!searchParams.has('f') || searchParams.get('f') !== 'p') {
+    console.warn('[CustoJusto Extract] ⚠️  AVISO: Parâmetro f=p não encontrado na URL!');
+    console.warn('[CustoJusto Extract] ⚠️  Adicionando f=p para filtrar apenas particulares...');
+    searchParams.set('f', 'p');
+    urlObj.search = searchParams.toString();
+    listingUrl = urlObj.toString();
+    console.log(`[CustoJusto Extract] ✅ URL corrigida: ${listingUrl}`);
+  }
+  
   const browser = await createBrowser({ 
     headless, 
     timeout 
@@ -236,6 +248,10 @@ async function extractAllListingUrls(listingUrl, options = {}) {
   
   const allUrls = new Set();
   let currentPage = 1;
+  
+  // Preservar URL (já corrigida se necessário) e seus parâmetros de query (especialmente f=p)
+  const originalUrl = new URL(listingUrl);
+  const originalSearchParams = new URLSearchParams(originalUrl.search);
   
   try {
     // Navegar para primeira página
@@ -300,12 +316,14 @@ async function extractAllListingUrls(listingUrl, options = {}) {
       }
       
       // Navegar para próxima página
+      // IMPORTANTE: Preservar parâmetros originais da URL (especialmente f=p)
       currentPage++;
-      const nextPageUrl = await page.evaluate((currentPage) => {
-        const url = new URL(window.location.href);
-        url.searchParams.set('page', currentPage);
-        return url.toString();
-      }, currentPage);
+      const nextPageUrl = new URL(originalUrl);
+      const nextPageParams = new URLSearchParams(originalSearchParams);
+      nextPageParams.set('page', currentPage.toString());
+      nextPageUrl.search = nextPageParams.toString();
+      
+      console.log(`[CustoJusto Extract] 🔗 URL próxima página: ${nextPageUrl.toString()}`);
       
       console.log(`[CustoJusto Extract] 📄 Carregando página ${currentPage}...`);
       await randomDelay(2000, 4000);
