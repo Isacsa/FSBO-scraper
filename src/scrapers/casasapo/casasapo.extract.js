@@ -3,7 +3,6 @@
  */
 
 const { createBrowser, createPage, navigateWithRetry, randomDelay, slowScroll, closePopupsAndOverlays, getRandomUserAgent } = require('./casasapo.utils');
-const { extractPhone } = require('../../utils/selectors');
 
 /**
  * Extrai URLs de anúncios da página de listagem
@@ -286,6 +285,9 @@ async function extractAdDetails(adUrl, options = {}) {
       await randomDelay(1000, 2000);
     }
     
+    // Aguardar um pouco mais para garantir que o conteúdo está carregado
+    await randomDelay(2000, 3000);
+    
     // Extrair dados básicos
     const rawData = await page.evaluate(() => {
       const data = {};
@@ -385,17 +387,63 @@ async function extractAdDetails(adUrl, options = {}) {
         }
       }
       
-      // Localização
+      // Localização/Morada - procurar em múltiplos lugares
+      data.location = null;
       const locationSelectors = [
         '[class*="location"]',
+        '[class*="Location"]',
         '[class*="address"]',
-        '[itemprop="address"]'
+        '[class*="Address"]',
+        '[class*="localizacao"]',
+        '[class*="morada"]',
+        '[itemprop="address"]',
+        '[itemprop="addressLocality"]',
+        '[data-location]',
+        '[data-address]',
+        'address',
+        '[class*="property-location"]',
+        '[class*="ad-location"]'
       ];
+      
+      // Estratégia 1: Procurar por seletores específicos
       for (const selector of locationSelectors) {
-        const loc = document.querySelector(selector);
-        if (loc && loc.textContent) {
-          data.location = loc.textContent.trim();
-          break;
+        const locs = document.querySelectorAll(selector);
+        for (const loc of locs) {
+          if (loc && loc.textContent) {
+            const text = loc.textContent.trim();
+            // Validar que parece uma morada (contém palavras comuns de localização)
+            if (text.length > 5 && text.length < 200 && 
+                (text.includes(',') || text.match(/\d{4}-\d{3}/) || 
+                 text.includes('Portugal') || text.match(/[A-Z][a-z]+/))) {
+              data.location = text;
+              break;
+            }
+          }
+        }
+        if (data.location) break;
+      }
+      
+      // Estratégia 2: Procurar no breadcrumb ou título
+      if (!data.location) {
+        const breadcrumb = document.querySelector('[class*="breadcrumb"], nav[aria-label*="breadcrumb"]');
+        if (breadcrumb) {
+          const breadcrumbText = breadcrumb.textContent || '';
+          // Extrair última parte do breadcrumb (geralmente é a morada completa)
+          const parts = breadcrumbText.split('>').map(p => p.trim()).filter(p => p);
+          if (parts.length > 0) {
+            data.location = parts[parts.length - 1];
+          }
+        }
+      }
+      
+      // Estratégia 3: Procurar no título ou subtítulo
+      if (!data.location) {
+        const subtitle = document.querySelector('h2, h3, [class*="subtitle"]');
+        if (subtitle) {
+          const subtitleText = subtitle.textContent?.trim() || '';
+          if (subtitleText.length > 5 && subtitleText.length < 200) {
+            data.location = subtitleText;
+          }
         }
       }
       
@@ -423,7 +471,7 @@ async function extractAdDetails(adUrl, options = {}) {
       // Features/Atributos - filtrar elementos do footer/menu
       data.features = [];
       const excludedClasses = ['footer', 'header', 'menu', 'nav', 'cookie', 'popup', 'modal'];
-      const featureElements = document.querySelectorAll('[class*="feature"], [class*="attribute"], [class*="specification"], dt, dd');
+      const featureElements = document.querySelectorAll('[class*="feature"], [class*="attribute"], [class*="specification"], dt, dd, [class*="info"], [class*="detail"]');
       
       featureElements.forEach(el => {
         // Verificar se não é do footer/menu
@@ -440,6 +488,33 @@ async function extractAdDetails(adUrl, options = {}) {
           // Filtrar códigos de país (ex: "PT Portugal +351")
           data.features.push(text);
         }
+      });
+      
+      // Procurar também em elementos de sidebar ou metadata que podem conter "Publicado em"
+      const metadataSelectors = [
+        '[class*="metadata"]',
+        '[class*="meta"]',
+        '[class*="sidebar"]',
+        '[class*="info-box"]',
+        '[class*="property-info"]',
+        'aside',
+        '[class*="published"]',
+        '[class*="date-info"]'
+      ];
+      
+      metadataSelectors.forEach(selector => {
+        document.querySelectorAll(selector).forEach(el => {
+          const text = el.textContent?.trim() || '';
+          if (text && text.length > 0 && text.length < 300) {
+            // Adicionar se contém informações relevantes mas não é duplicado
+            if (!data.features.includes(text) && 
+                (text.toLowerCase().includes('publicado') || 
+                 text.toLowerCase().includes('atualizado') ||
+                 text.match(/\d{1,2}[\/\-]\d{1,2}/))) {
+              data.features.push(text);
+            }
+          }
+        });
       });
       
       // Especificações estruturadas
@@ -486,87 +561,98 @@ async function extractAdDetails(adUrl, options = {}) {
         }
       }
       
-      // Datas - procurar por "Publicado em", "Atualizado em", etc.
+      // Datas - procurar por "Publicado em" na estrutura específica do CasaSapo
       data.published_date = null;
       data.updated_date = null;
-      const datePatterns = [
-        /Publicado em[:\s]+([^<\n]+)/i,
-        /Publicado[:\s]+([^<\n]+)/i,
-        /há\s+(\d+)\s+(dia|dias|mês|meses)/i,
-        /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/
-      ];
       
-      const bodyText = document.body.textContent;
-      datePatterns.forEach(pattern => {
-        const match = bodyText.match(pattern);
-        if (match && !data.published_date) {
-          data.published_date = match[1]?.trim() || match[0]?.trim();
+      // Procurar na estrutura específica do CasaSapo (detail-main-features-item)
+      const allFeatureItems = document.querySelectorAll('.detail-main-features-item');
+      for (const item of allFeatureItems) {
+        const titleEl = item.querySelector('.detail-main-features-item-title');
+        const valueEl = item.querySelector('.detail-main-features-item-value');
+        
+        if (titleEl && titleEl.textContent) {
+          const titleText = titleEl.textContent.trim().toLowerCase();
+          
+          // Verificar se é "Publicado em" - extrair apenas o valor
+          if (titleText.includes('publicado') && valueEl && valueEl.textContent) {
+            data.published_date = valueEl.textContent.trim(); // Apenas o valor, ex: "há mais de um mês"
+            break;
+          }
+          
+          // Verificar se é "Atualizado em" - extrair apenas o valor
+          if (titleText.includes('atualizado') && valueEl && valueEl.textContent) {
+            data.updated_date = valueEl.textContent.trim(); // Apenas o valor
+          }
         }
-      });
+      }
+      
+      // Estratégia 2: Procurar em elementos específicos de data
+      if (!data.published_date) {
+        const dateSelectors = [
+          '[class*="date"]',
+          '[class*="published"]',
+          '[class*="publicado"]',
+          '[class*="time"]',
+          '[datetime]',
+          'time[datetime]'
+        ];
+        
+        for (const selector of dateSelectors) {
+          const dateEls = document.querySelectorAll(selector);
+          for (const dateEl of dateEls) {
+            const text = dateEl.textContent?.trim() || '';
+            const datetime = dateEl.getAttribute('datetime') || '';
+            
+            // Verificar se contém "Publicado" ou "publicado"
+            if (text.toLowerCase().includes('publicado') || datetime) {
+              if (datetime) {
+                data.published_date = datetime;
+              } else if (text) {
+                data.published_date = text;
+              }
+              break;
+            }
+          }
+          if (data.published_date) break;
+        }
+      }
+      
+      // Estratégia 3: Procurar no texto completo da página com padrões
+      if (!data.published_date) {
+        const bodyText = document.body.textContent;
+        const datePatterns = [
+          /Publicado\s+em[:\s]+([^\n<]+?)(?:\s+(há\s+\d+\s+(?:dia|dias|semana|semanas|mês|meses|ano|anos)|hoje|ontem))?/i,
+          /Publicado[:\s]+([^\n<]+)/i,
+          /(há\s+\d+\s+(?:dia|dias|semana|semanas|mês|meses|ano|anos))/i,
+          /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/
+        ];
+        
+        for (const pattern of datePatterns) {
+          const match = bodyText.match(pattern);
+          if (match && match[1]) {
+            data.published_date = match[1].trim();
+            break;
+          } else if (match && match[0]) {
+            data.published_date = match[0].trim();
+            break;
+          }
+        }
+      }
+      
+      // Procurar data de atualização
+      const updatedPattern = /Atualizado\s+em[:\s]+([^\n<]+)/i;
+      const updatedMatch = document.body.textContent.match(updatedPattern);
+      if (updatedMatch && updatedMatch[1]) {
+        data.updated_date = updatedMatch[1].trim();
+      }
       
       return data;
     });
     
-    // Tentar extrair telefone (clicar no botão se necessário)
-    let phone = null;
-    try {
-      // Procurar botão "Mostrar contacto" ou similar
-      const phoneButtonFound = await page.evaluate(() => {
-        const buttons = Array.from(document.querySelectorAll('button, a, span'));
-        return buttons.some(el => {
-          const text = el.textContent?.toLowerCase() || '';
-          return text.includes('mostrar') || 
-                 text.includes('contacto') || 
-                 text.includes('contact') ||
-                 text.includes('telefone') ||
-                 text.includes('telephone');
-        });
-      });
-      
-      if (phoneButtonFound) {
-        // Clicar no botão
-        await page.evaluate(() => {
-          const buttons = Array.from(document.querySelectorAll('button, a, span'));
-          const button = buttons.find(el => {
-            const text = el.textContent?.toLowerCase() || '';
-            return text.includes('mostrar') || 
-                   text.includes('contacto') || 
-                   text.includes('contact') ||
-                   text.includes('telefone');
-          });
-          if (button) {
-            button.click();
-          }
-        });
-        
-        console.log('[CasaSapo Extract] 📞 Clicando para revelar contacto...');
-        await randomDelay(2000, 3000);
-      }
-      
-      // Extrair telefone após clique
-      phone = await page.evaluate(() => {
-        const phonePattern = /(\+351)?\s?9\d{2}\s?\d{3}\s?\d{3}/;
-        const phoneMatch = document.body.textContent.match(phonePattern);
-        if (phoneMatch) {
-          return phoneMatch[0].trim();
-        }
-        
-        // Procurar em elementos específicos
-        const phoneElements = document.querySelectorAll('[class*="phone"], [class*="contact"], a[href^="tel:"]');
-        for (const el of phoneElements) {
-          const text = el.textContent || el.getAttribute('href')?.replace('tel:', '');
-          if (text && text.match(/\d{9}/)) {
-            return text.trim();
-          }
-        }
-        
-        return null;
-      });
-    } catch (e) {
-      console.warn('[CasaSapo Extract] ⚠️  Não foi possível extrair telefone:', e.message);
-    }
-    
-    rawData.phone = phone;
+    // Nota: CasaSapo não expõe contato de particulares, então não tentamos extrair telefone
+    // Apenas anúncios de agências têm telefone visível, mas filtramos esses na listagem
+    rawData.phone = null;
     rawData.url = adUrl;
     
     return rawData;
