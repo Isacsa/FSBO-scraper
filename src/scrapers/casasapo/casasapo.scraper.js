@@ -16,7 +16,7 @@ async function scrapeCasaSapo(listingUrl, options = {}) {
     onlyNew = false,
     maxPages = null,
     maxAds = null,
-    headless = false
+    headless = true  // Default true, mas será validado por shouldRunHeadless() em createBrowser
   } = options;
   
   console.log('[CASASAPO] 🚀 Iniciando scrape...');

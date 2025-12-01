@@ -26,18 +26,43 @@ function getRandomUserAgent() {
  */
 async function createBrowser(options = {}) {
   const {
-    headless = false,
+    headless: requestedHeadless = true,  // Default true, mas será validado por shouldRunHeadless()
     timeout = 60000
   } = options;
   
+  // Usar função centralizada para determinar headless real
+  const { shouldRunHeadless } = require('../../utils/browser');
+  const effectiveHeadless = shouldRunHeadless({ headless: requestedHeadless });
+  
+  // Detectar se estamos em servidor Linux (VPS sem interface gráfica)
+  const isServerLinux = process.platform === 'linux';
+  const isServerEnv = !!(process.env.N8N || process.env.FSBO_SERVER || process.env.CI);
+  
+  // Argumentos ESSENCIAIS para servidor Linux (VPS sem X11)
+  const serverArgs = [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage'
+  ];
+  
+  // Argumentos adicionais para headless
+  const headlessArgs = [
+    '--disable-accelerated-2d-canvas',
+    '--no-zygote',
+    '--disable-gpu'
+  ];
+  
+  // Em servidor, sempre usar args de servidor
+  const args = (isServerLinux || isServerEnv)
+    ? (effectiveHeadless ? [...serverArgs, ...headlessArgs] : serverArgs)
+    : (effectiveHeadless ? [...serverArgs, ...headlessArgs] : serverArgs);
+  
   return await chromium.launch({
-    headless,
+    headless: effectiveHeadless,
     timeout,
     args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-blink-features=AutomationControlled',
-      '--disable-dev-shm-usage'
+      ...args,
+      '--disable-blink-features=AutomationControlled'  // Anti-bot específico
     ]
   });
 }

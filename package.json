@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node tests/test.js"
+    "test": "node tests/test.js",
+    "test:headless": "node tests/browser-headless.test.js",
+    "scrape-all": "node scripts/scrape-all.js"
   },
   "keywords": [
     "scraper",

@@ -72,8 +72,13 @@ async function scrapeController(req, res) {
     }
     
     // Extrair opções do body (n8n pode enviar)
+    // Headless será validado por shouldRunHeadless() em createBrowser
+    const { shouldRunHeadless } = require('../utils/browser');
+    const requestedHeadless = req.body?.headless !== undefined ? req.body.headless : true;
+    const effectiveHeadless = shouldRunHeadless({ headless: requestedHeadless });
+    
     const options = {
-      headless: req.body?.headless !== undefined ? req.body.headless : true,
+      headless: effectiveHeadless,
       includeRawHtml: req.body?.include_raw_html === true,
       timeout: req.body?.max_timeout || 30000,
       proxy: req.body?.proxy || null

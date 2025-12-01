@@ -146,7 +146,7 @@ async function extractAllListingUrls(listingUrl, options = {}) {
   const {
     maxPages = null,
     timeout = 40000,
-    headless = false
+    headless = true  // Default true, mas será validado por shouldRunHeadless() em createBrowser
   } = options;
   
   console.log('[CasaSapo Extract] 📋 Iniciando extração de listagem...');
@@ -254,7 +254,7 @@ async function extractAllListingUrls(listingUrl, options = {}) {
 async function extractAdDetails(adUrl, options = {}) {
   const {
     timeout = 60000,
-    headless = false
+    headless = true  // Default true, mas será validado por shouldRunHeadless() em createBrowser
   } = options;
   
   console.log(`[CasaSapo Extract] 🔍 Extraindo detalhes: ${adUrl}`);

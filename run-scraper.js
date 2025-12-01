@@ -197,8 +197,11 @@ async function run() {
   let results = [];
   let rawResponse = null;
 
-  // Headless automático em modo n8n, silent ou json-only
-  const effectiveHeadless = (args.n8n || args.silent || args.jsonOnly) ? true : false;
+  // Usar função centralizada para determinar headless (não afetado por debug)
+  const { shouldRunHeadless } = require('./src/utils/browser');
+  // Headless é determinado pela função centralizada, não por flags de debug/silent
+  // Em servidor (N8N, CI, Linux) será sempre true
+  const effectiveHeadless = shouldRunHeadless({ headless: true });
   const onlyNew = args.mode === 'new';
 
   try {

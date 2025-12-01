@@ -27,7 +27,7 @@ async function scrapeIdealista(url, options = {}) {
   const { 
     includeRawHtml = false,
     timeout = 90000,
-    headless = false
+    headless = true  // Default true, mas será validado por shouldRunHeadless() em createBrowser
   } = options;
   
   let sessionId = null;

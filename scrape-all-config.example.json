@@ -1,0 +1,19 @@
+{
+  "urls": {
+    "olx": "https://www.olx.pt/anuncio/EXEMPLO",
+    "imovirtual": "https://www.imovirtual.com/anuncio/EXEMPLO",
+    "idealista": "https://www.idealista.pt/comprar-casas/lisboa/",
+    "custojusto": "https://www.custojusto.pt/portugal/imobiliario/moradias/q/Lisboa?f=p",
+    "casasapo": "https://www.casasapo.pt/comprar/moradias/lisboa"
+  },
+  "options": {
+    "headless": true,
+    "onlyNew": false,
+    "maxPages": null,
+    "maxAds": null,
+    "maxResults": null
+  },
+  "parallel": false,
+  "outputFile": "data/all-scrapers-output.json"
+}
+

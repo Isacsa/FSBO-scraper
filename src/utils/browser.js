@@ -12,38 +12,100 @@ const USER_AGENTS = [
 ];
 
 /**
+ * Determina se o browser deve rodar em modo headless
+ * 
+ * Regras:
+ * - Se FSBO_HEADLESS=true → sempre headless
+ * - Se N8N, FSBO_SERVER, ou CI estão definidos → sempre headless
+ * - Se não for macOS (Darwin) → sempre headless (servidor Linux)
+ * - Se for macOS local → respeita a flag headless passada (default: true)
+ * 
+ * @param {Object} flags - Flags de configuração
+ * @param {boolean} flags.headless - Flag headless do usuário (opcional)
+ * @returns {boolean} - true se deve rodar headless, false caso contrário
+ */
+function shouldRunHeadless(flags = {}) {
+  // Forçar headless via variável de ambiente
+  if (process.env.FSBO_HEADLESS === 'true') {
+    return true;
+  }
+  
+  // Forçar headless em ambientes de servidor/CI
+  if (process.env.N8N || process.env.FSBO_SERVER || process.env.CI) {
+    return true;
+  }
+  
+  // Forçar headless em sistemas não-macOS (Linux, Windows em servidor)
+  const isLocal = process.platform === 'darwin';
+  if (!isLocal) {
+    return true;
+  }
+  
+  // Em macOS local, respeitar a flag passada (default: true)
+  return flags.headless !== undefined ? flags.headless : true;
+}
+
+/**
  * Cria e configura um browser com stealth
  * @param {Object} options - Opções de configuração
  * @param {number} options.timeout - Timeout em ms (default: 30000)
- * @param {boolean} options.headless - Modo headless (default: true)
+ * @param {boolean} options.headless - Modo headless desejado (será validado por shouldRunHeadless)
+ * @param {string} options.proxy - Proxy server (opcional)
  * @returns {Promise<Browser>}
  */
 async function createBrowser(options = {}) {
   const {
     timeout = 30000,
-    headless = true,
+    headless: requestedHeadless = true,
     proxy = null
   } = options;
 
-  // Argumentos base para todos os modos
-  const baseArgs = [
-    '--disable-dev-shm-usage',
-    '--no-first-run'
-  ];
+  // Usar função centralizada para determinar headless real
+  const effectiveHeadless = shouldRunHeadless({ headless: requestedHeadless });
 
-  // Argumentos adicionais apenas para headless (Docker/CI)
-  const headlessArgs = [
+  // Detectar se estamos em servidor Linux (VPS sem interface gráfica)
+  const isServerLinux = process.platform === 'linux';
+  const isServerEnv = !!(process.env.N8N || process.env.FSBO_SERVER || process.env.CI);
+
+  // Argumentos ESSENCIAIS para servidor Linux (VPS sem X11)
+  // Estes args são OBRIGATÓRIOS em servidor para evitar crashes do Playwright
+  // Especificamente necessários para VPS Hostinger Ubuntu sem X11
+  const serverArgs = [
     '--no-sandbox',
     '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage'
+  ];
+
+  // Argumentos adicionais para headless (Docker/CI/VPS)
+  const headlessArgs = [
+    '--no-first-run',
     '--disable-accelerated-2d-canvas',
     '--no-zygote',
     '--disable-gpu'
   ];
 
-  const args = headless ? [...baseArgs, ...headlessArgs] : baseArgs;
+  // Argumentos base para modo local (macOS)
+  const localArgs = [
+    '--disable-dev-shm-usage',
+    '--no-first-run'
+  ];
+
+  // Determinar args baseado no ambiente
+  let args;
+  if (isServerLinux || isServerEnv) {
+    // SERVIDOR (VPS Linux): SEMPRE usar args de servidor
+    // Mesmo que effectiveHeadless seja false (nunca será em servidor, mas garantimos)
+    // Estes args são CRÍTICOS para funcionar em VPS sem X11
+    args = effectiveHeadless 
+      ? [...serverArgs, ...headlessArgs]  // Headless: todos os args
+      : [...serverArgs];  // Não-headless (teórico): pelo menos args de servidor
+  } else {
+    // LOCAL (macOS): usar args apenas se headless
+    args = effectiveHeadless ? [...localArgs, ...headlessArgs] : localArgs;
+  }
 
   const launchOptions = {
-    headless,
+    headless: effectiveHeadless,
     args
   };
   
@@ -54,8 +116,8 @@ async function createBrowser(options = {}) {
     };
   }
   
-  // Adicionar slowMo para debug quando headless é false
-  if (!headless) {
+  // Adicionar slowMo para debug quando headless é false (apenas local macOS)
+  if (!effectiveHeadless) {
     launchOptions.slowMo = 150;
   }
   
@@ -238,7 +300,8 @@ module.exports = {
   createPage,
   navigateWithRetry,
   waitForElement,
-  clickWithRetry
+  clickWithRetry,
+  shouldRunHeadless
 };
 
 
