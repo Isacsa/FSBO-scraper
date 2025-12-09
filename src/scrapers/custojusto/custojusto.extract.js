@@ -406,6 +406,44 @@ async function extractAdDetails(adUrl, options = {}) {
     const rawData = await page.evaluate(() => {
       const data = {};
       
+      // PRIMEIRO: Tentar extrair listTime do JSON embutido na página
+      // O CustoJusto embute dados JSON nos scripts que contém listTime
+      data.listTime = null;
+      try {
+        // Procurar em scripts JSON-LD ou application/json
+        const scripts = document.querySelectorAll('script[type="application/json"], script[type="application/ld+json"]');
+        for (const script of scripts) {
+          try {
+            const jsonData = JSON.parse(script.textContent);
+            const jsonStr = JSON.stringify(jsonData);
+            
+            // Procurar por listTime no JSON
+            const listTimeMatch = jsonStr.match(/"listTime"\s*:\s*"([^"]+)"/);
+            if (listTimeMatch) {
+              data.listTime = listTimeMatch[1];
+              break;
+            }
+          } catch (e) {
+            // Continuar procurando
+          }
+        }
+        
+        // Se não encontrou, procurar no HTML completo
+        if (!data.listTime) {
+          const htmlContent = document.body.innerHTML;
+          const listTimeMatches = htmlContent.match(/"listTime"\s*:\s*"([^"]+)"/g);
+          if (listTimeMatches && listTimeMatches.length > 0) {
+            // Pegar o primeiro match e extrair a data
+            const firstMatch = listTimeMatches[0].match(/"listTime"\s*:\s*"([^"]+)"/);
+            if (firstMatch) {
+              data.listTime = firstMatch[1];
+            }
+          }
+        }
+      } catch (e) {
+        // Ignorar erro
+      }
+      
       // Título
       data.title = document.querySelector('h1')?.textContent?.trim() || 
                    document.querySelector('[class*="title"]')?.textContent?.trim() || null;
@@ -456,8 +494,15 @@ async function extractAdDetails(adUrl, options = {}) {
       const bodyText = document.body.textContent;
       const priceMatch = bodyText.match(pricePattern);
       
+      let priceElement = null;
       if (priceMatch) {
         data.price = priceMatch[0].trim();
+        // Tentar encontrar o elemento do preço
+        const allElements = Array.from(document.querySelectorAll('*'));
+        priceElement = allElements.find(el => {
+          const text = el.textContent || '';
+          return text.includes(priceMatch[0]) && text.includes('€');
+        });
       } else {
         // Tentar seletores
         const priceSelectors = [
@@ -471,10 +516,202 @@ async function extractAdDetails(adUrl, options = {}) {
             const priceEl = document.querySelector(selector);
             if (priceEl && priceEl.textContent && priceEl.textContent.includes('€')) {
               data.price = priceEl.textContent.trim();
+              priceElement = priceEl;
               break;
             }
           } catch (e) {
             // Ignorar seletor inválido
+          }
+        }
+      }
+      
+      // Extrair datas (published_date, updated_date, days_online)
+      // PRIORIDADE 1: Usar listTime do JSON se disponível
+      data.published_date = null;
+      data.updated_date = null;
+      data.days_online = null;
+      
+      if (data.listTime) {
+        // listTime vem em formato ISO (ex: "2025-11-19T00:00:10Z")
+        // Usar como published_date
+        data.published_date = data.listTime;
+        
+        // Calcular days_online se possível
+        try {
+          const listDate = new Date(data.listTime);
+          const now = new Date();
+          const diffTime = now - listDate;
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          if (diffDays >= 0) {
+            data.days_online = diffDays.toString();
+          }
+        } catch (e) {
+          // Ignorar erro de parsing
+        }
+      }
+      
+      // PRIORIDADE 2: Se não tem listTime, tentar extrair do HTML
+      // As datas costumam estar abaixo do preço no formato "27 Nov"
+      
+      // Padrão específico do CustoJusto: "DD MMM" (ex: "27 Nov")
+      const custoJustoDatePattern = /(\d{1,2})\s+(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\.?/i;
+      
+      if (priceElement) {
+        // Procurar elementos próximos ao preço (irmãos ou filhos próximos)
+        let currentElement = priceElement;
+        const checkedElements = new Set();
+        
+        // Procurar nos próximos 10 elementos irmãos
+        for (let i = 0; i < 10; i++) {
+          if (currentElement && currentElement.nextElementSibling) {
+            currentElement = currentElement.nextElementSibling;
+            if (checkedElements.has(currentElement)) break;
+            checkedElements.add(currentElement);
+            
+            const text = currentElement.textContent?.trim() || '';
+            if (text.length > 0 && text.length < 200) {
+              // Procurar padrão "DD MMM" (formato CustoJusto)
+              const dateMatch = text.match(custoJustoDatePattern);
+              if (dateMatch && !data.published_date) {
+                data.published_date = dateMatch[0].trim();
+              }
+              
+              // Procurar por "Publicado" ou "Atualizado"
+              const lowerText = text.toLowerCase();
+              
+              if (lowerText.includes('publicado') && !data.published_date) {
+                // Extrair a data que vem após "Publicado"
+                const publishedDateMatch = text.match(/(?:publicado|publicado em|publicado à)\s*([^\.\n]{0,50})/i);
+                if (publishedDateMatch) {
+                  data.published_date = publishedDateMatch[1].trim();
+                } else {
+                  data.published_date = text;
+                }
+              }
+              if (lowerText.includes('atualizado') && !data.updated_date) {
+                // Extrair a data que vem após "Atualizado"
+                const updatedDateMatch = text.match(/(?:atualizado|atualizado em|atualizado à)\s*([^\.\n]{0,50})/i);
+                if (updatedDateMatch) {
+                  data.updated_date = updatedDateMatch[1].trim();
+                } else {
+                  data.updated_date = text;
+                }
+              }
+              
+              // Procurar por "há X dias" ou "X dias online"
+              if ((lowerText.includes('dias') || lowerText.includes('dias online')) && !data.days_online) {
+                const daysMatch = text.match(/(\d+)\s*dias?/i);
+                if (daysMatch) {
+                  data.days_online = daysMatch[1];
+                }
+              }
+            }
+          } else {
+            break;
+          }
+        }
+        
+        // Se não encontrou, procurar no elemento pai e seus filhos
+        if (!data.published_date && !data.updated_date) {
+          let parent = priceElement.parentElement;
+          if (parent) {
+            const parentText = parent.textContent || '';
+            
+            // Procurar padrão "DD MMM" no texto do pai
+            const dateMatch = parentText.match(custoJustoDatePattern);
+            if (dateMatch && !data.published_date) {
+              data.published_date = dateMatch[0].trim();
+            }
+            
+            // Procurar padrões de data no texto do pai
+            const publishedMatch = parentText.match(/(?:Publicado|publicado)\s*(?:em|à|às)?\s*([^\.\n]{0,50})/i);
+            if (publishedMatch && !data.published_date) {
+              data.published_date = publishedMatch[1]?.trim() || publishedMatch[0].trim();
+            }
+            
+            const updatedMatch = parentText.match(/(?:Atualizado|atualizado)\s*(?:em|à|às)?\s*([^\.\n]{0,50})/i);
+            if (updatedMatch && !data.updated_date) {
+              data.updated_date = updatedMatch[1]?.trim() || updatedMatch[0].trim();
+            }
+          }
+        }
+      }
+      
+      // Fallback: procurar em toda a página por padrões de data
+      if (!data.published_date) {
+        // Primeiro procurar pelo padrão específico "DD MMM"
+        const dateMatch = bodyText.match(custoJustoDatePattern);
+        if (dateMatch) {
+          // Verificar se está próximo de "Publicado" ou "Atualizado"
+          const matchIndex = bodyText.indexOf(dateMatch[0]);
+          const contextBefore = bodyText.substring(Math.max(0, matchIndex - 50), matchIndex);
+          const contextAfter = bodyText.substring(matchIndex, matchIndex + 100);
+          
+          if (contextBefore.toLowerCase().includes('publicado') || 
+              contextAfter.toLowerCase().includes('publicado')) {
+            data.published_date = dateMatch[0].trim();
+          } else if (contextBefore.toLowerCase().includes('atualizado') || 
+                     contextAfter.toLowerCase().includes('atualizado')) {
+            data.updated_date = dateMatch[0].trim();
+          } else {
+            // Se não tem contexto, assumir que é published_date
+            data.published_date = dateMatch[0].trim();
+          }
+        }
+        
+        // Procurar por "Publicado" ou "Atualizado" no texto
+        const publishedPatterns = [
+          /(?:Publicado|publicado)\s*(?:em|à|às)?\s*(\d{1,2}\s+(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\.?)/i,
+          /(?:Publicado|publicado)[^\.\n]{0,100}/i
+        ];
+        
+        for (const pattern of publishedPatterns) {
+          const match = bodyText.match(pattern);
+          if (match && !data.published_date) {
+            // Se o match contém a data, extrair apenas a parte da data
+            const dateInMatch = match[0].match(custoJustoDatePattern);
+            if (dateInMatch) {
+              data.published_date = dateInMatch[0].trim();
+            } else {
+              data.published_date = match[1]?.trim() || match[0].trim();
+            }
+            break;
+          }
+        }
+        
+        const updatedPatterns = [
+          /(?:Atualizado|atualizado)\s*(?:em|à|às)?\s*(\d{1,2}\s+(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\.?)/i,
+          /(?:Atualizado|atualizado)[^\.\n]{0,100}/i
+        ];
+        
+        for (const pattern of updatedPatterns) {
+          const match = bodyText.match(pattern);
+          if (match && !data.updated_date) {
+            // Se o match contém a data, extrair apenas a parte da data
+            const dateInMatch = match[0].match(custoJustoDatePattern);
+            if (dateInMatch) {
+              data.updated_date = dateInMatch[0].trim();
+            } else {
+              data.updated_date = match[1]?.trim() || match[0].trim();
+            }
+            break;
+          }
+        }
+      }
+      
+      // Procurar "dias online" se ainda não encontrou
+      if (!data.days_online) {
+        const daysOnlinePatterns = [
+          /(\d+)\s*dias?\s+online/i,
+          /há\s+(\d+)\s+dias?/i,
+          /online\s+há\s+(\d+)\s+dias?/i
+        ];
+        
+        for (const pattern of daysOnlinePatterns) {
+          const match = bodyText.match(pattern);
+          if (match) {
+            data.days_online = match[1];
+            break;
           }
         }
       }

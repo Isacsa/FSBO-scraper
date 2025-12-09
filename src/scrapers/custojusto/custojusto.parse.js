@@ -19,7 +19,12 @@ function parseAdData(rawData) {
     photos: rawData.photos || [],
     features: rawData.features || [],
     phone: normalizePhone(rawData.phone),
-    specifications: rawData.specifications || {}
+    specifications: rawData.specifications || {},
+    // Preservar dados de data para normalização
+    listTime: rawData.listTime || null,
+    published_date: rawData.published_date || null,
+    updated_date: rawData.updated_date || null,
+    days_online: rawData.days_online || null
   };
   
   // Usar especificações para melhorar location_text se disponível

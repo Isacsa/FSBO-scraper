@@ -4,6 +4,7 @@
 
 const { normalizeLocation } = require('../../utils/locationNormalizer');
 const { parseAdData } = require('./custojusto.parse');
+const { parseCustoJustoDate } = require('./dateParser');
 
 /**
  * Normaliza um anúncio para formato JSON final
@@ -117,15 +118,62 @@ async function normalizeAd(parsed, options = {}) {
     }
   }
   
+  // Processar datas
+  let published_date = null;
+  let updated_date = null;
+  let days_online = null;
+  
+  // Se tem listTime (ISO string), usar diretamente
+  if (parsed.listTime) {
+    try {
+      // listTime já vem em formato ISO UTC (ex: "2025-11-19T00:00:10Z")
+      published_date = parsed.listTime;
+      
+      // Calcular days_online
+      const listDate = new Date(parsed.listTime);
+      const nowDate = new Date();
+      const diffTime = nowDate - listDate;
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays >= 0) {
+        days_online = diffDays.toString();
+      }
+    } catch (e) {
+      // Se falhar, tentar parsear como string
+      published_date = parsed.listTime;
+    }
+  } else if (parsed.published_date) {
+    // Tentar parsear a data extraída do HTML usando o dateParser
+    const parsedDate = parseCustoJustoDate(parsed.published_date);
+    if (parsedDate) {
+      published_date = parsedDate;
+    } else {
+      // Se não conseguir parsear, manter o texto original
+      published_date = parsed.published_date;
+    }
+  }
+  
+  if (parsed.updated_date) {
+    const parsedUpdatedDate = parseCustoJustoDate(parsed.updated_date);
+    if (parsedUpdatedDate) {
+      updated_date = parsedUpdatedDate;
+    } else {
+      updated_date = parsed.updated_date;
+    }
+  }
+  
+  if (parsed.days_online) {
+    days_online = parsed.days_online;
+  }
+  
   // Montar objeto final
   const normalized = {
     source: 'custojusto',
     ad_id: parsed.ad_id || null,
     url: parsed.url || null,
-    published_date: null, // CustoJusto não fornece
-    updated_date: null,
+    published_date: published_date,
+    updated_date: updated_date,
     timestamp: now,
-    days_online: null,
+    days_online: days_online,
     title: parsed.title || null,
     description: parsed.description || null,
     location: location,
