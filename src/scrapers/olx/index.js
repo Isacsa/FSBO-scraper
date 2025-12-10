@@ -87,8 +87,21 @@ async function scrapeOLX(url, options = {}) {
     // Fechar popups, overlays e banners
     await closePopupsAndOverlays(page, PLATFORM.toUpperCase());
 
+    // Aguardar elementos principais carregarem
+    try {
+      // Tentar esperar por elementos comuns que indicam que a página carregou
+      await page.waitForSelector('body', { timeout: 5000 }).catch(() => {});
+      // Aguardar por título ou preço (indicadores de que o conteúdo principal carregou)
+      await Promise.race([
+        page.waitForSelector('h1, h2, h3, h4', { timeout: 3000 }).catch(() => {}),
+        page.waitForSelector('[data-testid*="title"], [data-cy*="title"]', { timeout: 3000 }).catch(() => {})
+      ]);
+    } catch (e) {
+      // Continuar mesmo se não encontrar
+    }
+
     // Aguardar um pouco mais para garantir que a página está estável
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
 
     // 1. EXTRAIR DADOS BRUTOS
     console.log(`[${PLATFORM.toUpperCase()}] 📥 Fase 1: Extração de dados brutos`);

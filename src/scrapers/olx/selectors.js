@@ -6,16 +6,33 @@ module.exports = {
   title: [
     '[data-testid="offer_title"] h4',
     '[data-cy="offer_title"] h4',
+    '[data-testid="offer_title"]',
+    '[data-cy="offer_title"]',
     'h4.css-1au435n',
-    'h4',
-    'h1'
+    'h1[class*="title"]',
+    'h2[class*="title"]',
+    'h3[class*="title"]',
+    'h4[class*="title"]',
+    'h1',
+    'h2',
+    'h4'
   ],
   
   price: [
     '[data-testid="ad-price-container"] h3',
+    '[data-cy="ad-price-container"] h3',
+    '[data-testid="ad-price-container"]',
+    '[data-cy="ad-price-container"]',
     'h3.css-yauxmy',
     'h3:has-text("€")',
-    'strong:has-text("€")'
+    'h2:has-text("€")',
+    'h1:has-text("€")',
+    'strong:has-text("€")',
+    'span:has-text("€")',
+    'div:has-text("€")',
+    '[class*="price"] h3',
+    '[class*="price"] h2',
+    '[class*="price"]'
   ],
   
   location: [

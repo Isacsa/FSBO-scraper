@@ -6,11 +6,28 @@
 const selectors = require('./selectors');
 
 /**
- * Tenta extrair usando múltiplos seletores
+ * Aguarda elemento aparecer na página
  */
-async function extractWithSelectors(page, selectorList, extractFn = null) {
+async function waitForElement(page, selector, timeout = 3000) {
+  try {
+    await page.waitForSelector(selector, { timeout, state: 'attached' }).catch(() => {});
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Tenta extrair usando múltiplos seletores com espera
+ */
+async function extractWithSelectors(page, selectorList, extractFn = null, waitFirst = false) {
   for (const selector of selectorList) {
     try {
+      // Tentar esperar pelo primeiro seletor
+      if (waitFirst && selector === selectorList[0]) {
+        await waitForElement(page, selector, 2000);
+      }
+      
       const element = await page.$(selector);
       if (element) {
         if (extractFn) {
@@ -29,30 +46,122 @@ async function extractWithSelectors(page, selectorList, extractFn = null) {
 }
 
 /**
- * Extrai título
+ * Extrai título com múltiplos métodos
  */
 async function extractTitle(page) {
-  return await extractWithSelectors(page, selectors.title);
+  // Método 1: Seletores CSS
+  let title = await extractWithSelectors(page, selectors.title, null, true);
+  if (title) return title;
+  
+  // Método 2: Procurar em h1, h2, h3, h4
+  title = await page.evaluate(() => {
+    const headings = document.querySelectorAll('h1, h2, h3, h4');
+    for (const h of headings) {
+      const text = h.textContent?.trim();
+      if (text && text.length > 10 && text.length < 200) {
+        return text;
+      }
+    }
+    return null;
+  });
+  if (title) return title;
+  
+  // Método 3: Procurar em meta tags
+  title = await page.evaluate(() => {
+    const metaTitle = document.querySelector('meta[property="og:title"]') || 
+                      document.querySelector('meta[name="title"]');
+    if (metaTitle) {
+      return metaTitle.getAttribute('content')?.trim();
+    }
+    return null;
+  });
+  if (title) return title;
+  
+  // Método 4: Procurar em JSON-LD
+  title = await page.evaluate(() => {
+    const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+    for (const script of scripts) {
+      try {
+        const data = JSON.parse(script.textContent);
+        if (data.name || data.headline) {
+          return data.name || data.headline;
+        }
+      } catch (e) {}
+    }
+    return null;
+  });
+  
+  return title;
 }
 
 /**
- * Extrai preço
+ * Extrai preço com múltiplos métodos
  */
 async function extractPrice(page) {
-  return await extractWithSelectors(page, selectors.price);
+  // Método 1: Seletores CSS
+  let price = await extractWithSelectors(page, selectors.price, null, true);
+  if (price) return price;
+  
+  // Método 2: Procurar por padrões de preço no texto
+  price = await page.evaluate(() => {
+    // Procurar elementos com €
+    const priceElements = document.querySelectorAll('h1, h2, h3, h4, h5, span, div, p, strong');
+    for (const el of priceElements) {
+      const text = el.textContent?.trim() || '';
+      // Padrão: número seguido de €
+      const match = text.match(/(\d{1,3}(?:[.\s]\d{3})*(?:,\d{2})?)\s*€/);
+      if (match) {
+        return match[0].trim();
+      }
+    }
+    return null;
+  });
+  if (price) return price;
+  
+  // Método 3: Procurar em meta tags
+  price = await page.evaluate(() => {
+    const metaPrice = document.querySelector('meta[property="product:price:amount"]') ||
+                      document.querySelector('meta[name="price"]');
+    if (metaPrice) {
+      const value = metaPrice.getAttribute('content');
+      if (value) return `${value}€`;
+    }
+    return null;
+  });
+  if (price) return price;
+  
+  // Método 4: Procurar em JSON-LD
+  price = await page.evaluate(() => {
+    const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+    for (const script of scripts) {
+      try {
+        const data = JSON.parse(script.textContent);
+        if (data.offers?.price || data.price) {
+          const priceValue = data.offers?.price || data.price;
+          return `${priceValue}€`;
+        }
+      } catch (e) {}
+    }
+    return null;
+  });
+  
+  return price;
 }
 
 /**
- * Extrai localização
+ * Extrai localização com múltiplos métodos
  */
 async function extractLocation(page) {
   try {
-    // Tentar extrair localização estruturada
-    const locationData = await page.evaluate(() => {
+    // Método 1: Seletores CSS específicos
+    let locationData = await page.evaluate(() => {
       const locationEl = document.querySelector('.css-1deibjd');
       if (locationEl) {
         const paragraphs = Array.from(locationEl.querySelectorAll('p'));
-        return paragraphs.map(p => p.textContent.trim()).filter(Boolean);
+        const parts = paragraphs.map(p => p.textContent.trim()).filter(Boolean);
+        if (parts.length > 0) {
+          return parts;
+        }
       }
       return null;
     });
@@ -64,9 +173,59 @@ async function extractLocation(page) {
       };
     }
     
-    // Fallback para string simples
+    // Método 2: Seletores alternativos
     const locationStr = await extractWithSelectors(page, selectors.location);
-    return locationStr ? { raw: locationStr, parts: [locationStr] } : null;
+    if (locationStr) {
+      const parts = locationStr.split(',').map(p => p.trim()).filter(Boolean);
+      return { raw: locationStr, parts: parts.length > 0 ? parts : [locationStr] };
+    }
+    
+    // Método 3: Procurar em elementos com data attributes
+    locationData = await page.evaluate(() => {
+      const locationSelectors = [
+        '[data-testid="location"]',
+        '[data-cy="location"]',
+        '[class*="location"]',
+        '[id*="location"]'
+      ];
+      
+      for (const selector of locationSelectors) {
+        const elements = document.querySelectorAll(selector);
+        for (const el of elements) {
+          const text = el.textContent?.trim() || '';
+          if (text && text.length > 3) {
+            const parts = text.split(',').map(p => p.trim()).filter(Boolean);
+            if (parts.length > 0) {
+              return parts;
+            }
+          }
+        }
+      }
+      return null;
+    });
+    
+    if (locationData && locationData.length > 0) {
+      return {
+        raw: locationData.join(', '),
+        parts: locationData
+      };
+    }
+    
+    // Método 4: Procurar em meta tags
+    const metaLocation = await page.evaluate(() => {
+      const meta = document.querySelector('meta[property="og:locality"]') ||
+                   document.querySelector('meta[name="locality"]');
+      if (meta) {
+        return meta.getAttribute('content')?.trim();
+      }
+      return null;
+    });
+    
+    if (metaLocation) {
+      return { raw: metaLocation, parts: [metaLocation] };
+    }
+    
+    return null;
   } catch (error) {
     return null;
   }
@@ -227,27 +386,104 @@ async function extractAdvertiser(page) {
 }
 
 /**
- * Extrai descrição
+ * Extrai descrição com múltiplos métodos
  */
 async function extractDescription(page) {
   try {
-    const description = await page.evaluate(() => {
-      // Procurar h3 com texto "Descrição"
-      const h3Elements = Array.from(document.querySelectorAll('h3'));
-      const descH3 = h3Elements.find(h3 => h3.textContent.includes('Descrição'));
-      if (descH3) {
-        const nextSibling = descH3.nextElementSibling;
-        if (nextSibling) {
-          return nextSibling.textContent.trim();
+    // Método 1: Procurar h3/h2 com texto "Descrição" e pegar próximo elemento
+    let description = await page.evaluate(() => {
+      const headings = Array.from(document.querySelectorAll('h1, h2, h3, h4'));
+      for (const heading of headings) {
+        const text = heading.textContent?.toLowerCase() || '';
+        if (text.includes('descrição') || text.includes('descricao')) {
+          // Procurar próximo elemento irmão
+          let next = heading.nextElementSibling;
+          let attempts = 0;
+          while (next && attempts < 5) {
+            const content = next.textContent?.trim() || '';
+            if (content.length > 20) {
+              return content;
+            }
+            next = next.nextElementSibling;
+            attempts++;
+          }
+          
+          // Se não encontrou, procurar no próximo div
+          const parent = heading.parentElement;
+          if (parent) {
+            const allText = parent.textContent || '';
+            const descIndex = allText.toLowerCase().indexOf('descrição');
+            if (descIndex > -1) {
+              const descText = allText.substring(descIndex + 'descrição'.length).trim();
+              if (descText.length > 20) {
+                return descText.split('\n')[0].trim();
+              }
+            }
+          }
         }
       }
       return null;
     });
     
-    if (description) return description;
+    if (description && description.length > 20) return description;
     
-    // Fallback
-    return await extractWithSelectors(page, selectors.description);
+    // Método 2: Seletores CSS
+    description = await extractWithSelectors(page, selectors.description);
+    if (description && description.length > 20) return description;
+    
+    // Método 3: Procurar em meta tags
+    description = await page.evaluate(() => {
+      const metaDesc = document.querySelector('meta[property="og:description"]') ||
+                       document.querySelector('meta[name="description"]');
+      if (metaDesc) {
+        const content = metaDesc.getAttribute('content')?.trim();
+        if (content && content.length > 20) {
+          return content;
+        }
+      }
+      return null;
+    });
+    if (description && description.length > 20) return description;
+    
+    // Método 4: Procurar em JSON-LD
+    description = await page.evaluate(() => {
+      const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+      for (const script of scripts) {
+        try {
+          const data = JSON.parse(script.textContent);
+          if (data.description) {
+            return data.description;
+          }
+        } catch (e) {}
+      }
+      return null;
+    });
+    if (description && description.length > 20) return description;
+    
+    // Método 5: Procurar em divs com classes relacionadas
+    description = await page.evaluate(() => {
+      const descSelectors = [
+        '[class*="description"]',
+        '[class*="descricao"]',
+        '[id*="description"]',
+        '[id*="descricao"]',
+        '[data-cy*="description"]',
+        '[data-testid*="description"]'
+      ];
+      
+      for (const selector of descSelectors) {
+        const elements = document.querySelectorAll(selector);
+        for (const el of elements) {
+          const text = el.textContent?.trim() || '';
+          if (text.length > 20 && !text.toLowerCase().includes('descrição')) {
+            return text;
+          }
+        }
+      }
+      return null;
+    });
+    
+    return description;
   } catch (error) {
     return null;
   }
@@ -296,7 +532,7 @@ async function extractPhotos(page) {
 }
 
 /**
- * Extrai características/propriedades brutas
+ * Extrai características/propriedades brutas com múltiplos métodos
  * Retorna texto completo para processamento posterior
  */
 async function extractPropertyFeatures(page) {
@@ -305,43 +541,121 @@ async function extractPropertyFeatures(page) {
       const featuresObj = {};
       const featuresText = [];
       
-      // Procurar parágrafos com padrão "Label: Value"
+      // Método 1: Procurar em parágrafos com padrão "Label: Value"
       const paragraphs = Array.from(document.querySelectorAll('p'));
-      
       paragraphs.forEach(p => {
         const text = p.textContent.trim();
-        featuresText.push(text); // Guardar texto completo
-        
-        const colonIndex = text.indexOf(':');
-        
-        if (colonIndex > 0) {
-          const label = text.substring(0, colonIndex).trim();
-          const value = text.substring(colonIndex + 1).trim();
+        if (text) {
+          featuresText.push(text);
           
-          // Mapear labels conhecidos
-          if (label.toLowerCase().includes('tipologia')) {
-            featuresObj.tipology = value;
-          } else if (label.toLowerCase().includes('área') || label.toLowerCase().includes('area')) {
-            featuresObj.area = value;
-          } else if (label.toLowerCase().includes('ano') || label.toLowerCase().includes('construção')) {
-            featuresObj.year = value;
-          } else if (label.toLowerCase().includes('andar') || label.toLowerCase().includes('piso')) {
-            featuresObj.floor = value;
-          } else if (label.toLowerCase().includes('condição') || label.toLowerCase().includes('estado')) {
-            featuresObj.condition = value;
-          } else if (label.toLowerCase().includes('casas de banho') || label.toLowerCase().includes('wc')) {
-            featuresObj.bathrooms = value;
-          } else if (label.toLowerCase().includes('certificado energético') || label.toLowerCase().includes('energia')) {
-            featuresObj.energy = value;
-          } else if (label.toLowerCase().includes('garagem') || label.toLowerCase().includes('estacionamento')) {
-            featuresObj.garage = value;
-          } else if (label.toLowerCase().includes('elevador') || label.toLowerCase().includes('ascensor')) {
-            featuresObj.elevator = value;
-          } else if (label.toLowerCase().includes('varanda') || label.toLowerCase().includes('terraço')) {
-            featuresObj.balcony = value;
+          const colonIndex = text.indexOf(':');
+          if (colonIndex > 0) {
+            const label = text.substring(0, colonIndex).trim().toLowerCase();
+            const value = text.substring(colonIndex + 1).trim();
+            
+            // Mapear labels conhecidos
+            if (label.includes('tipologia') || label.includes('tipo')) {
+              featuresObj.tipology = value;
+            } else if (label.includes('área') || label.includes('area')) {
+              featuresObj.area = value;
+            } else if (label.includes('ano') || label.includes('construção') || label.includes('construcao')) {
+              featuresObj.year = value;
+            } else if (label.includes('andar') || label.includes('piso')) {
+              featuresObj.floor = value;
+            } else if (label.includes('condição') || label.includes('condicao') || label.includes('estado')) {
+              featuresObj.condition = value;
+            } else if (label.includes('casas de banho') || label.includes('wc') || label.includes('banheiros')) {
+              featuresObj.bathrooms = value;
+            } else if (label.includes('certificado energético') || label.includes('energia') || label.includes('certificado')) {
+              featuresObj.energy = value;
+            } else if (label.includes('garagem') || label.includes('estacionamento')) {
+              featuresObj.garage = value;
+            } else if (label.includes('elevador') || label.includes('ascensor')) {
+              featuresObj.elevator = value;
+            } else if (label.includes('varanda') || label.includes('terraço') || label.includes('terrac')) {
+              featuresObj.balcony = value;
+            }
           }
         }
       });
+      
+      // Método 2: Procurar em divs com classes específicas
+      const featureContainers = document.querySelectorAll('[class*="feature"], [class*="characteristic"], [class*="property"], [data-cy*="feature"], [data-testid*="feature"]');
+      featureContainers.forEach(container => {
+        const text = container.textContent?.trim() || '';
+        if (text) {
+          featuresText.push(text);
+          
+          // Procurar padrões dentro do container
+          const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+          lines.forEach(line => {
+            const colonIndex = line.indexOf(':');
+            if (colonIndex > 0) {
+              const label = line.substring(0, colonIndex).trim().toLowerCase();
+              const value = line.substring(colonIndex + 1).trim();
+              
+              if (label.includes('tipologia') && !featuresObj.tipology) {
+                featuresObj.tipology = value;
+              } else if ((label.includes('área') || label.includes('area')) && !featuresObj.area) {
+                featuresObj.area = value;
+              } else if ((label.includes('ano') || label.includes('construção')) && !featuresObj.year) {
+                featuresObj.year = value;
+              }
+            }
+          });
+        }
+      });
+      
+      // Método 3: Procurar em listas (ul, ol)
+      const lists = document.querySelectorAll('ul, ol');
+      lists.forEach(list => {
+        const items = Array.from(list.querySelectorAll('li'));
+        items.forEach(item => {
+          const text = item.textContent?.trim() || '';
+          if (text) {
+            featuresText.push(text);
+            
+            const colonIndex = text.indexOf(':');
+            if (colonIndex > 0) {
+              const label = text.substring(0, colonIndex).trim().toLowerCase();
+              const value = text.substring(colonIndex + 1).trim();
+              
+              if (label.includes('tipologia') && !featuresObj.tipology) {
+                featuresObj.tipology = value;
+              } else if ((label.includes('área') || label.includes('area')) && !featuresObj.area) {
+                featuresObj.area = value;
+              }
+            }
+          }
+        });
+      });
+      
+      // Método 4: Procurar padrões diretos no texto (ex: "T2", "T3", "120 m²")
+      const allText = document.body.textContent || '';
+      
+      // Procurar tipologia (T1, T2, T3, etc)
+      if (!featuresObj.tipology) {
+        const tipologyMatch = allText.match(/\bT[0-9]\+?[0-9]?\b/i);
+        if (tipologyMatch) {
+          featuresObj.tipology = tipologyMatch[0];
+        }
+      }
+      
+      // Procurar área (ex: "120 m²", "120m²")
+      if (!featuresObj.area) {
+        const areaMatch = allText.match(/(\d+(?:[.,]\d+)?)\s*m[²2]/i);
+        if (areaMatch) {
+          featuresObj.area = `${areaMatch[1]} m²`;
+        }
+      }
+      
+      // Procurar ano de construção
+      if (!featuresObj.year) {
+        const yearMatch = allText.match(/\b(19|20)\d{2}\b/);
+        if (yearMatch) {
+          featuresObj.year = yearMatch[0];
+        }
+      }
       
       // Adicionar texto completo para processamento
       featuresObj._rawText = featuresText.join(' ');
@@ -351,6 +665,7 @@ async function extractPropertyFeatures(page) {
     
     return features;
   } catch (error) {
+    console.warn('[OLX Extract] ⚠️  Erro ao extrair características:', error.message);
     return { _rawText: '' };
   }
 }
