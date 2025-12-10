@@ -6,6 +6,55 @@ const { createBrowser, createPage, navigateWithRetry } = require('../../utils/br
 const { closePopupsAndOverlays } = require('../helpers');
 
 /**
+ * Garante que a URL de listagem tenha o filtro de particulares
+ * Adiciona ou preserva o parâmetro search[private_business]=private
+ */
+function ensurePrivateFilter(url) {
+  try {
+    const urlObj = new URL(url);
+    
+    // Verificar se já tem o parâmetro (pode estar codificado ou não)
+    const searchParams = urlObj.searchParams;
+    let hasPrivateFilter = false;
+    
+    // Verificar diferentes formatos possíveis do parâmetro
+    for (const [key, value] of searchParams.entries()) {
+      // Verificar se é o parâmetro de particulares (pode estar codificado)
+      if (key === 'search[private_business]' || 
+          key === 'search%5Bprivate_business%5D' ||
+          decodeURIComponent(key) === 'search[private_business]') {
+        hasPrivateFilter = true;
+        // Garantir que o valor é 'private'
+        if (value !== 'private') {
+          searchParams.set('search[private_business]', 'private');
+        }
+        break;
+      }
+    }
+    
+    // Também verificar na string da URL diretamente (caso o URL não parseie corretamente)
+    if (!hasPrivateFilter && url.includes('private_business')) {
+      hasPrivateFilter = true;
+    }
+    
+    if (!hasPrivateFilter) {
+      // Adicionar o parâmetro de particulares
+      urlObj.searchParams.set('search[private_business]', 'private');
+      console.log('[OLX Listings] ✅ Filtro de particulares adicionado à URL');
+    } else {
+      // Garantir que está definido como 'private'
+      urlObj.searchParams.set('search[private_business]', 'private');
+      console.log('[OLX Listings] ✅ Filtro de particulares já presente na URL');
+    }
+    
+    return urlObj.toString();
+  } catch (error) {
+    console.warn('[OLX Listings] ⚠️  Erro ao processar URL, usando URL original:', error.message);
+    return url;
+  }
+}
+
+/**
  * Extrai URLs de anúncios de uma página de listagem
  */
 async function extractListingUrls(page) {
@@ -134,7 +183,11 @@ async function extractAllListingUrls(listingUrl, options = {}) {
   } = options;
   
   console.log('[OLX Listings] 📋 Iniciando extração de listagem...');
-  console.log(`[OLX Listings] URL: ${listingUrl}`);
+  console.log(`[OLX Listings] URL original: ${listingUrl}`);
+  
+  // Garantir que a URL tem o filtro de particulares
+  const urlWithPrivateFilter = ensurePrivateFilter(listingUrl);
+  console.log(`[OLX Listings] URL com filtro: ${urlWithPrivateFilter}`);
   
   const browser = await createBrowser({ 
     headless, 
@@ -152,9 +205,9 @@ async function extractAllListingUrls(listingUrl, options = {}) {
   let currentPage = 1;
   
   try {
-    // Navegar para primeira página
+    // Navegar para primeira página (com filtro de particulares)
     console.log(`[OLX Listings] 📄 Carregando página ${currentPage}...`);
-    await navigateWithRetry(page, listingUrl);
+    await navigateWithRetry(page, urlWithPrivateFilter);
     await page.waitForTimeout(3000);
     
     // Fechar popups
@@ -193,6 +246,8 @@ async function extractAllListingUrls(listingUrl, options = {}) {
       const nextPageUrl = await page.evaluate((currentPage) => {
         const url = new URL(window.location.href);
         url.searchParams.set('page', currentPage);
+        // Garantir que o filtro de particulares está presente
+        url.searchParams.set('search[private_business]', 'private');
         return url.toString();
       }, currentPage);
       

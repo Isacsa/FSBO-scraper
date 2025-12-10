@@ -122,7 +122,13 @@ async function scrapeOLX(url, options = {}) {
   // Listagem - processar múltiplos anúncios
   console.log(`[${PLATFORM.toUpperCase()}] 📋 Modo: Listagem`);
   console.log(`[${PLATFORM.toUpperCase()}] Modo: ${onlyNew ? 'Apenas novos' : 'Todos'}`);
-  console.log(`[${PLATFORM.toUpperCase()}] Filtrar agências: ${shouldFilterAgencies ? 'Sim' : 'Não'}`);
+  
+  // Verificar se a URL já tem filtro de particulares
+  const hasPrivateFilter = url.includes('private_business') || url.includes('search%5Bprivate_business%5D');
+  
+  // Se já está filtrado por particulares, não filtrar agências (já estão filtradas)
+  const effectiveFilterAgencies = hasPrivateFilter ? false : shouldFilterAgencies;
+  console.log(`[${PLATFORM.toUpperCase()}] Filtrar agências: ${effectiveFilterAgencies ? 'Sim' : 'Não'} ${hasPrivateFilter ? '(já filtrado por particulares)' : ''}`);
   
   try {
     // 1. Extrair URLs de todas as páginas
@@ -177,16 +183,18 @@ async function scrapeOLX(url, options = {}) {
     console.log(`[${PLATFORM.toUpperCase()}] 📋 Fase 3: Normalização...`);
     const normalizedAds = rawAdsData.map(ad => normalizeFinalObject(ad));
     
-    // 4. Filtrar agências se solicitado
+    // 4. Filtrar agências se solicitado (mas não se já está filtrado por particulares)
     let finalAds = normalizedAds;
     let agenciesFiltered = 0;
     
-    if (shouldFilterAgencies) {
+    if (effectiveFilterAgencies) {
       console.log(`[${PLATFORM.toUpperCase()}] 📋 Fase 4: Filtrando agências...`);
       const filtered = filterAgencies(normalizedAds);
       finalAds = filtered.fsbo;
       agenciesFiltered = filtered.agencies.length;
       console.log(`[${PLATFORM.toUpperCase()}] ✅ ${agenciesFiltered} agências filtradas`);
+    } else {
+      console.log(`[${PLATFORM.toUpperCase()}] 📋 Fase 4: Pulando filtro de agências ${hasPrivateFilter ? '(já filtrado por particulares)' : '(desativado)'}`);
     }
     
     // 5. Filtrar novos (se solicitado)
