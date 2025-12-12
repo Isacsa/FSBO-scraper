@@ -51,7 +51,7 @@ async function extractWithSelectors(page, selectorList, extractFn = null, waitFi
 async function extractTitle(page) {
   // Método 1: Seletores CSS
   let title = await extractWithSelectors(page, selectors.title, null, true);
-  if (title) return title;
+  if (title && title.length > 5) return title;
   
   // Método 2: Procurar em h1, h2, h3, h4
   title = await page.evaluate(() => {
@@ -64,18 +64,21 @@ async function extractTitle(page) {
     }
     return null;
   });
-  if (title) return title;
+  if (title && title.length > 5) return title;
   
   // Método 3: Procurar em meta tags
   title = await page.evaluate(() => {
     const metaTitle = document.querySelector('meta[property="og:title"]') || 
                       document.querySelector('meta[name="title"]');
     if (metaTitle) {
-      return metaTitle.getAttribute('content')?.trim();
+      const content = metaTitle.getAttribute('content')?.trim();
+      if (content && content.length > 5) {
+        return content;
+      }
     }
     return null;
   });
-  if (title) return title;
+  if (title && title.length > 5) return title;
   
   // Método 4: Procurar em JSON-LD
   title = await page.evaluate(() => {
@@ -84,7 +87,37 @@ async function extractTitle(page) {
       try {
         const data = JSON.parse(script.textContent);
         if (data.name || data.headline) {
-          return data.name || data.headline;
+          const result = data.name || data.headline;
+          if (result && result.length > 5) {
+            return result;
+          }
+        }
+      } catch (e) {}
+    }
+    return null;
+  });
+  if (title && title.length > 5) return title;
+  
+  // Método 5: Fallback - procurar qualquer texto que pareça título
+  title = await page.evaluate(() => {
+    // Procurar em elementos com classes que podem conter título
+    const possibleTitleSelectors = [
+      '[class*="title"]',
+      '[class*="heading"]',
+      '[id*="title"]',
+      'header h1, header h2, header h3',
+      'main h1, main h2, main h3',
+      'article h1, article h2, article h3'
+    ];
+    
+    for (const selector of possibleTitleSelectors) {
+      try {
+        const elements = document.querySelectorAll(selector);
+        for (const el of elements) {
+          const text = el.textContent?.trim();
+          if (text && text.length > 10 && text.length < 200) {
+            return text;
+          }
         }
       } catch (e) {}
     }
@@ -683,25 +716,217 @@ function extractAdId(url) {
 }
 
 /**
+ * Verifica se a página carregou corretamente
+ */
+async function verifyPageLoaded(page) {
+  try {
+    // Verificar se há conteúdo na página
+    const hasContent = await page.evaluate(() => {
+      const bodyText = document.body?.textContent || '';
+      return bodyText.length > 100; // Pelo menos 100 caracteres
+    });
+    
+    if (!hasContent) {
+      console.warn('[OLX Extract] ⚠️  Página parece vazia, aguardando mais tempo...');
+      await page.waitForTimeout(3000);
+      
+      // Verificar novamente
+      const hasContentAfterWait = await page.evaluate(() => {
+        const bodyText = document.body?.textContent || '';
+        return bodyText.length > 100;
+      });
+      
+      if (!hasContentAfterWait) {
+        console.warn('[OLX Extract] ⚠️  Página ainda parece vazia após espera');
+        return false;
+      }
+    }
+    
+    // Verificar se há elementos básicos
+    const hasBasicElements = await page.evaluate(() => {
+      return document.querySelector('h1, h2, h3, h4') !== null ||
+             document.querySelector('[data-testid*="title"]') !== null ||
+             document.querySelector('[data-cy*="title"]') !== null;
+    });
+    
+    if (!hasBasicElements) {
+      console.warn('[OLX Extract] ⚠️  Não encontrados elementos básicos na página');
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.warn('[OLX Extract] ⚠️  Erro ao verificar carregamento:', error.message);
+    return false;
+  }
+}
+
+/**
  * Função principal de extração
  */
 async function extractRawData(page, url) {
   console.log('[OLX Extract] 🔍 Iniciando extração de dados brutos...');
   
-  const raw = {
-    title: await extractTitle(page),
-    price: await extractPrice(page),
-    location: await extractLocation(page),
-    coordinates: await extractCoordinates(page),
-    dates: await extractDates(page),
-    advertiser: await extractAdvertiser(page),
-    description: await extractDescription(page),
-    photos: await extractPhotos(page),
-    features: await extractPropertyFeatures(page),
+  // Verificar se a página carregou
+  const pageLoaded = await verifyPageLoaded(page);
+  if (!pageLoaded) {
+    console.warn('[OLX Extract] ⚠️  Página pode não ter carregado completamente');
+    // Continuar mesmo assim, mas com mais espera
+    await page.waitForTimeout(2000);
+  }
+  
+  // Extrair dados com tratamento de erros individual
+  let raw = {
+    title: null,
+    price: null,
+    location: null,
+    coordinates: null,
+    dates: { published: null, updated: null },
+    advertiser: { name: null, url: null },
+    description: null,
+    photos: null,
+    features: { _rawText: '' },
     ad_id: extractAdId(url)
   };
   
-  console.log('[OLX Extract] ✅ Extração concluída');
+  try {
+    raw.title = await extractTitle(page);
+    if (!raw.title) {
+      console.warn('[OLX Extract] ⚠️  Título não encontrado');
+    }
+  } catch (error) {
+    console.warn('[OLX Extract] ⚠️  Erro ao extrair título:', error.message);
+  }
+  
+  try {
+    raw.price = await extractPrice(page);
+    if (!raw.price) {
+      console.warn('[OLX Extract] ⚠️  Preço não encontrado');
+    }
+  } catch (error) {
+    console.warn('[OLX Extract] ⚠️  Erro ao extrair preço:', error.message);
+  }
+  
+  try {
+    raw.location = await extractLocation(page);
+    if (!raw.location) {
+      console.warn('[OLX Extract] ⚠️  Localização não encontrada');
+    }
+  } catch (error) {
+    console.warn('[OLX Extract] ⚠️  Erro ao extrair localização:', error.message);
+  }
+  
+  try {
+    raw.coordinates = await extractCoordinates(page);
+  } catch (error) {
+    console.warn('[OLX Extract] ⚠️  Erro ao extrair coordenadas:', error.message);
+  }
+  
+  try {
+    raw.dates = await extractDates(page);
+  } catch (error) {
+    console.warn('[OLX Extract] ⚠️  Erro ao extrair datas:', error.message);
+  }
+  
+  try {
+    raw.advertiser = await extractAdvertiser(page);
+    if (!raw.advertiser.name && !raw.advertiser.url) {
+      console.warn('[OLX Extract] ⚠️  Anunciante não encontrado');
+    }
+  } catch (error) {
+    console.warn('[OLX Extract] ⚠️  Erro ao extrair anunciante:', error.message);
+  }
+  
+  try {
+    raw.description = await extractDescription(page);
+    if (!raw.description) {
+      console.warn('[OLX Extract] ⚠️  Descrição não encontrada');
+    }
+  } catch (error) {
+    console.warn('[OLX Extract] ⚠️  Erro ao extrair descrição:', error.message);
+  }
+  
+  try {
+    raw.photos = await extractPhotos(page);
+    if (!raw.photos || raw.photos.length === 0) {
+      console.warn('[OLX Extract] ⚠️  Fotos não encontradas');
+    }
+  } catch (error) {
+    console.warn('[OLX Extract] ⚠️  Erro ao extrair fotos:', error.message);
+  }
+  
+  try {
+    raw.features = await extractPropertyFeatures(page);
+  } catch (error) {
+    console.warn('[OLX Extract] ⚠️  Erro ao extrair características:', error.message);
+  }
+  
+  // Verificar se extraímos dados mínimos
+  const hasMinimalData = raw.title || raw.price || raw.description;
+  if (!hasMinimalData) {
+    console.error('[OLX Extract] ❌ ERRO CRÍTICO: Nenhum dado mínimo extraído!');
+    console.error('[OLX Extract] URL:', url);
+    
+    // Tentar obter HTML para debug
+    try {
+      const pageTitle = await page.title();
+      const pageUrl = page.url();
+      console.error('[OLX Extract] Título da página:', pageTitle);
+      console.error('[OLX Extract] URL atual:', pageUrl);
+      
+      // Verificar se estamos na página correta
+      if (!pageUrl.includes('olx.pt') || pageUrl.includes('error') || pageUrl.includes('404')) {
+        console.error('[OLX Extract] ❌ Página pode estar com erro ou redirecionada!');
+      }
+      
+      // Tentar extração de emergência - pegar qualquer texto que pareça título/preço
+      console.warn('[OLX Extract] 🔄 Tentando extração de emergência...');
+      
+      const emergencyData = await page.evaluate(() => {
+        const result = { title: null, price: null, description: null };
+        
+        // Procurar título em qualquer lugar
+        const allText = document.body?.textContent || '';
+        const lines = allText.split('\n').map(l => l.trim()).filter(l => l.length > 10 && l.length < 200);
+        if (lines.length > 0) {
+          result.title = lines[0];
+        }
+        
+        // Procurar preço
+        const priceMatch = allText.match(/(\d{1,3}(?:[.\s]\d{3})*(?:,\d{2})?)\s*€/);
+        if (priceMatch) {
+          result.price = priceMatch[0];
+        }
+        
+        // Procurar descrição (primeiro parágrafo longo)
+        for (const line of lines) {
+          if (line.length > 50 && !line.includes('€') && !line.match(/^\d+$/)) {
+            result.description = line;
+            break;
+          }
+        }
+        
+        return result;
+      });
+      
+      if (emergencyData.title) {
+        console.warn('[OLX Extract] ✅ Extração de emergência encontrou título');
+        raw.title = emergencyData.title;
+      }
+      if (emergencyData.price) {
+        console.warn('[OLX Extract] ✅ Extração de emergência encontrou preço');
+        raw.price = emergencyData.price;
+      }
+      if (emergencyData.description) {
+        console.warn('[OLX Extract] ✅ Extração de emergência encontrou descrição');
+        raw.description = emergencyData.description;
+      }
+    } catch (e) {
+      console.error('[OLX Extract] Não foi possível obter informações da página:', e.message);
+    }
+  } else {
+    console.log('[OLX Extract] ✅ Extração concluída com dados mínimos');
+  }
   
   return raw;
 }

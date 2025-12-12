@@ -91,17 +91,34 @@ async function scrapeOLX(url, options = {}) {
     try {
       // Tentar esperar por elementos comuns que indicam que a página carregou
       await page.waitForSelector('body', { timeout: 5000 }).catch(() => {});
+      
       // Aguardar por título ou preço (indicadores de que o conteúdo principal carregou)
       await Promise.race([
-        page.waitForSelector('h1, h2, h3, h4', { timeout: 3000 }).catch(() => {}),
-        page.waitForSelector('[data-testid*="title"], [data-cy*="title"]', { timeout: 3000 }).catch(() => {})
+        page.waitForSelector('h1, h2, h3, h4', { timeout: 5000 }).catch(() => {}),
+        page.waitForSelector('[data-testid*="title"], [data-cy*="title"]', { timeout: 5000 }).catch(() => {}),
+        page.waitForSelector('[data-testid*="price"], [data-cy*="price"]', { timeout: 5000 }).catch(() => {})
       ]);
+      
+      // Verificar se a página realmente tem conteúdo
+      const hasContent = await page.evaluate(() => {
+        return document.body?.textContent?.length > 100;
+      });
+      
+      if (!hasContent) {
+        console.warn(`[${PLATFORM.toUpperCase()}] ⚠️  Página pode não ter carregado, aguardando mais...`);
+        await page.waitForTimeout(3000);
+        await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {});
+      }
     } catch (e) {
-      // Continuar mesmo se não encontrar
+      console.warn(`[${PLATFORM.toUpperCase()}] ⚠️  Erro ao aguardar elementos:`, e.message);
     }
 
     // Aguardar um pouco mais para garantir que a página está estável
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
+    
+    // Fechar popups novamente (podem ter aparecido depois)
+    await closePopupsAndOverlays(page, PLATFORM.toUpperCase());
+    await page.waitForTimeout(1000);
 
     // 1. EXTRAIR DADOS BRUTOS
     console.log(`[${PLATFORM.toUpperCase()}] 📥 Fase 1: Extração de dados brutos`);
