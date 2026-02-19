@@ -1,0 +1,10 @@
+[OLX Extract] ⚠️  Localização não encontrada
+[OLX Extract] ⚠️  Anunciante não encontrado
+[OLX DateParser] ⚠️  Não foi possível parsear a data: "23/2024"
+[OLX Extract] ⚠️  Localização não encontrada
+[OLX Extract] ⚠️  Anunciante não encontrado
+[OLX DateParser] ⚠️  Não foi possível parsear a data: "23/2024"
+[OLX Extract] ⚠️  Localização não encontrada
+[OLX Extract] ⚠️  Anunciante não encontrado
+[OLX DateParser] ⚠️  Não foi possível parsear a data: "23/2024"
+[OLX Extract] ⚠️  Fotos não encontradas

@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "platform": "idealista",
+  "error": "LOBSTR_API_KEY env var is required to use Lobstr integration (Idealista).",
+  "timestamp": "2026-02-19T16:07:44.655Z"
+}

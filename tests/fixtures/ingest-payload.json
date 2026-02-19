@@ -1,0 +1,95 @@
+{
+  "run_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "config_id": "c0000000-0000-0000-0000-000000000001",
+  "source": "olx",
+  "area_query": "Viana do Castelo",
+  "scraped_at": "2026-01-23T12:00:00Z",
+  "duration_ms": 45000,
+  "items": [
+    {
+      "external_id": "test-ad-001",
+      "canonical_url": "https://www.olx.pt/d/anuncio/apartamento-t2-viana-IDtest001.html",
+      "title": "Apartamento T2 Viana do Castelo",
+      "description": "Apartamento T2 remodelado no centro de Viana do Castelo. Cozinha equipada, 2 quartos, sala ampla.",
+      "price": 150000,
+      "location": {
+        "district": "Viana do Castelo",
+        "municipality": "Viana do Castelo",
+        "parish": "Meadela",
+        "lat": 41.6918,
+        "lng": -8.8347
+      },
+      "property": {
+        "type": "apartamento",
+        "tipology": "T2",
+        "area_total": null,
+        "area_useful": 85,
+        "year": 2005,
+        "floor": "2",
+        "condition": "usado"
+      },
+      "advertiser": {
+        "name": "Manuel Silva",
+        "is_agency": false,
+        "url": "https://www.olx.pt/ads/user/test123/"
+      },
+      "photos": [
+        "https://ireland.apollo.olxcdn.com/v1/files/test-photo-1.jpg",
+        "https://ireland.apollo.olxcdn.com/v1/files/test-photo-2.jpg"
+      ],
+      "features": [
+        "Certificado Energético: C",
+        "Garagem"
+      ],
+      "fsbo_score": 65,
+      "fingerprint": "abc123def456",
+      "signals": {
+        "watermark": false,
+        "professional_photos": false,
+        "agency_keywords": []
+      }
+    },
+    {
+      "external_id": "test-ad-002",
+      "canonical_url": "https://www.olx.pt/d/anuncio/moradia-t3-arcos-IDtest002.html",
+      "title": "Moradia T3 Arcos de Valdevez",
+      "description": "Moradia independente com quintal. 3 quartos, 2 WC. Vista para o rio.",
+      "price": 220000,
+      "location": {
+        "district": "Viana do Castelo",
+        "municipality": "Arcos de Valdevez",
+        "parish": null,
+        "lat": 41.8489,
+        "lng": -8.4189
+      },
+      "property": {
+        "type": "moradia",
+        "tipology": "T3",
+        "area_total": 200,
+        "area_useful": 140,
+        "year": 1998,
+        "floor": null,
+        "condition": "usado"
+      },
+      "advertiser": {
+        "name": "Ana Costa",
+        "is_agency": false,
+        "url": null
+      },
+      "photos": [],
+      "features": [],
+      "fsbo_score": 80,
+      "fingerprint": "xyz789ghi012",
+      "signals": {
+        "watermark": false,
+        "professional_photos": false,
+        "agency_keywords": []
+      }
+    }
+  ],
+  "meta": {
+    "total_scraped": 2,
+    "dedupe_removed_local": 0,
+    "scraper_version": "1.0.0"
+  }
+}

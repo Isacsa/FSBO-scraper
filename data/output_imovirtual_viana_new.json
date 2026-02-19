@@ -1,0 +1,313 @@
+{
+  "success": true,
+  "platform": "imovirtual",
+  "timestamp": "2026-02-19T17:07:58.544Z",
+  "duration_ms": 93034,
+  "results": [
+    {
+      "source": "imovirtual",
+      "ad_id": "1hTAM",
+      "url": "https://www.imovirtual.com/pt/anuncio/andar-de-moradia-em-barroselas-novo-e-renovado-ID1hTAM",
+      "published_date": "2026-02-13T00:00:00.000Z",
+      "updated_date": "2026-02-13T00:00:00.000Z",
+      "timestamp": "2026-02-19T17:06:49.444Z",
+      "days_online": "6",
+      "title": "Andar de moradia EM BARROSELAS NOVO E RENOVADO.",
+      "description": "Andar de moradia no primeiro piso com área útil de 85m2, sótão, varandas e entrada privada com logradouro.Dispõe de caixilharia em alumínio com vidros duplos, 1 casa de banho completa com banheira, 2 quartos com roupeiros embutidos e um escritório. Entrada privada com pequeno logradouro.Localizado em zona sossegada e de fácil acesso, ainda com a vantagem de estar a ser criada uma nova artéria que leva diretamente ao acesso para a autoestrada.Em Barroselas, uma freguesia com vários serviços essenciais e comércio à disposição.Aproveite para agendar a sua visita.",
+      "location": {
+        "district": "Viana do Castelo",
+        "municipality": "Viana do Castelo",
+        "parish": "Travessa da Foguetaria - Sião",
+        "lat": "41.6918",
+        "lng": "-8.8347"
+      },
+      "price": "198000",
+      "property": {
+        "type": "moradia",
+        "tipology": "T3",
+        "area_total": "",
+        "area_useful": "84",
+        "year": "",
+        "floor": "andar:: 1",
+        "condition": "novo"
+      },
+      "features": [
+        "Casas de Banho: 1",
+        "Andar: 1/1",
+        "Condição: pronto a habitar"
+      ],
+      "photos": [
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjV6M2NpMnR6MXd0aTMtQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.hQyYyUdkrCwaaqztrcoKCzbvU0MzmFlKLx3vR6le61g/image;s=1280x1024;q=80?width=1920",
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjdxN2lhNjYxczVubi1BUFQiLCJ3IjpbeyJmbiI6IjY5bmxwYTdlY3FtNzEtQVBUIiwicyI6IjE0IiwicCI6IjEwLC0xMCIsImEiOiIwIn1dfQ.NpefUmqVtPgVCTIJPym3mCqfEEBBIMsiIb54m-b16oA/image;s=1280x1024;q=80?width=1920",
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6Inp5Nzk5N3N0N2U1MjItQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.g-SdklNb9DRMmt2eSJAOSiX5ia30blNMvL2QvRFihC8/image;s=1280x1024;q=80?width=1920",
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6Im45Nmpvb3prNWR0ajMtQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.Q_pCdOy-QQH4GkiquRK69INlK5IjpYEXasIZJqhSgr8/image;s=1280x1024;q=80?width=1920",
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6ImFuZGdhbmx5djRpajItQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.bT4xrGc0D2ddrQAybhP9-SE9FB87N2nhKulW3VoP5XE/image;s=314x236;q=80?width=1920"
+      ],
+      "advertiser": {
+        "name": "",
+        "total_ads": "",
+        "is_agency": false,
+        "url": ""
+      },
+      "signals": {
+        "watermark": false,
+        "duplicate": false,
+        "professional_photos": false,
+        "agency_keywords": []
+      },
+      "_fingerprint": "fcc73d58c7aea0b302b7cd549a5e8684",
+      "_fsbo_score": 85,
+      "_fsbo_reasons": [
+        "Anunciante não tem histórico de múltiplos anúncios",
+        "Fotos não parecem profissionais",
+        "Telefone não disponível",
+        "5 fotos (típico de FSBO)",
+        "Descrição com tamanho adequado",
+        "Anunciante confirmado como particular"
+      ]
+    },
+    {
+      "source": "imovirtual",
+      "ad_id": "1hUle",
+      "url": "https://www.imovirtual.com/pt/anuncio/t3-com-varanda-garagem-e-excelente-localizacao-ID1hUle",
+      "published_date": "2026-02-16T00:00:00.000Z",
+      "updated_date": "2026-02-16T00:00:00.000Z",
+      "timestamp": "2026-02-19T17:07:07.272Z",
+      "days_online": "3",
+      "title": "T3 com varanda, garagem e excelente localização",
+      "description": "Este apartamento de 118 m² encontra-se no 4º andar de um bloco de 5 andares, construído em 1991. Dispõe de 2 casas de banho, varanda e garagem para maior comodidade. A sua estrutura em breezeblock e janelas de alumínio garantem bom isolamento térmico. Está pronto a habitar e oferece aquecimento por outro sistema.Localizado na zona de Santa Maria Maior e Monserrate, em Viana do Castelo, beneficia de fácil acesso a serviços e infraestruturas. Nas proximidades, encontra escolas, desde jardins de infância até ao ensino secundário e superior.Para lazer e bem-estar, há parques e zonas verdes nas redondezas, além de centros de saúde, farmácias e clínicas. A zona também conta com supermercados, lojas de conveniência, centros comerciais e instalações desportivas.A sua localização permite deslocações rápidas às principais vias de transporte, incluindo a estação de comboios. Aproveite esta oportunidade de viver numa zona tranquila, com todas as comodidades ao seu alcance.Não deixe de agendar uma visita para conhecer melhor esta propriedade e verificar se atende às suas necessidades.",
+      "location": {
+        "district": "Viana do Castelo",
+        "municipality": "Viana do Castelo",
+        "parish": "Rua Aquilino Ribeiro",
+        "lat": "41.6918",
+        "lng": "-8.8347"
+      },
+      "price": "300000",
+      "property": {
+        "type": "garagem",
+        "tipology": "T3",
+        "area_total": "",
+        "area_useful": "118",
+        "year": "1991",
+        "floor": "4º andar",
+        "condition": "novo"
+      },
+      "features": [
+        "Casas de Banho: 2",
+        "Andar: 4/5",
+        "Condição: pronto a habitar"
+      ],
+      "photos": [
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InBoOTE1YnFhbTdqbjMtQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.UhnT6iXGWAQZBP3XdHNVa1_5cK7990Cz8nU5C8z2Sc0/image;s=1280x1024;q=80?width=1920"
+      ],
+      "advertiser": {
+        "name": "",
+        "total_ads": "",
+        "is_agency": false,
+        "url": ""
+      },
+      "signals": {
+        "watermark": false,
+        "duplicate": false,
+        "professional_photos": false,
+        "agency_keywords": []
+      },
+      "_fingerprint": "8597adff1adf9f2bc0abf01041435702",
+      "_fsbo_score": 80,
+      "_fsbo_reasons": [
+        "Anunciante não tem histórico de múltiplos anúncios",
+        "Fotos não parecem profissionais",
+        "Telefone não disponível",
+        "1 fotos (típico de FSBO)",
+        "Anunciante confirmado como particular"
+      ]
+    },
+    {
+      "source": "imovirtual",
+      "ad_id": "1hSap",
+      "url": "https://www.imovirtual.com/pt/anuncio/apartamento-t3-pronto-para-morar-ID1hSap",
+      "published_date": "2026-02-08T00:00:00.000Z",
+      "updated_date": "2026-02-08T00:00:00.000Z",
+      "timestamp": "2026-02-19T17:07:25.949Z",
+      "days_online": "11",
+      "title": "Apartamento T3 pronto para morar",
+      "description": "Apartamento T3 com duas frentes, em ótimo estado de conservação e com áreas amplas e bem distribuídas. Dispõe de cozinha totalmente equipada, aspiração central, aquecimento central completo e quartos com roupeiros embutidos e vidros duplos. Inserido num condomínio, varandas e garagem fechada, este imóvel oferece todo o conforto e funcionalidade que procura.Excelente exposição solar e bons acessos.Localizado perto de todos os serviços essenciais e a poucos minutos do centro da cidade, este apartamento é a combinação perfeita entre qualidade de vida e conforto.Agende já sua visita. (Sem interesse em imobiliárias).",
+      "location": {
+        "district": "Viana do Castelo",
+        "municipality": "Viana do Castelo",
+        "parish": "Santa Maria Maior e Monserrate e Meadela",
+        "lat": "41.7052",
+        "lng": "-8.8437"
+      },
+      "price": "329000",
+      "property": {
+        "type": "apartamento",
+        "tipology": "T3",
+        "area_total": "",
+        "area_useful": "142",
+        "year": "2026",
+        "floor": "R/C",
+        "condition": "novo"
+      },
+      "features": [
+        "Casas de Banho: 2",
+        "Andar: rés do chão",
+        "Condição: pronto a habitar"
+      ],
+      "photos": [
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InVjZnNrZDg4MjJkcjEtQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.QqRjyW-8wwbq22y5FH26FSBTlAWVE5IQH9tFQtn-1ko/image;s=1280x1024;q=80?width=1920",
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6ImpkY3M0ZDhiN2lqejEtQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.SrEFvHpSOi9tDYMYS5xJfAv1p72L3tNeRh-lw8_YK7A/image;s=1280x1024;q=80?width=1920",
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjU5bmoxcHFlbDM3NjEtQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.AH1NonPk9PBCAD3dbZc3GTGhNJM9IHvfudCq7TuabJs/image;s=1280x1024;q=80?width=1920",
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6ImU1eHptaDJwZjFrZzMtQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.l-loh7J0wrtbY38DotngPJz9U8QWG8RoVIjcAkpFGgc/image;s=1280x1024;q=80?width=1920",
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IjY1bm83c2hkdWNwaDMtQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.ToKBXEXsP-mDJf6H3N4m3zB0kEEtZYDa4JCaheyuKPg/image;s=314x236;q=80?width=1920"
+      ],
+      "advertiser": {
+        "name": "",
+        "total_ads": "",
+        "is_agency": false,
+        "url": ""
+      },
+      "signals": {
+        "watermark": false,
+        "duplicate": false,
+        "professional_photos": false,
+        "agency_keywords": []
+      },
+      "_fingerprint": "7b9c4c053ed259f1a8a6394764c31b81",
+      "_fsbo_score": 85,
+      "_fsbo_reasons": [
+        "Anunciante não tem histórico de múltiplos anúncios",
+        "Fotos não parecem profissionais",
+        "Telefone não disponível",
+        "5 fotos (típico de FSBO)",
+        "Descrição com tamanho adequado",
+        "Anunciante confirmado como particular"
+      ]
+    },
+    {
+      "source": "imovirtual",
+      "ad_id": "1hQRN",
+      "url": "https://www.imovirtual.com/pt/anuncio/t2-ultimo-andar-em-condominio-fechado-meadela-viana-do-castelo-ID1hQRN",
+      "published_date": "2026-02-03T00:00:00.000Z",
+      "updated_date": "2026-02-03T00:00:00.000Z",
+      "timestamp": "2026-02-19T17:07:42.574Z",
+      "days_online": "16",
+      "title": "T2 Último Andar em Condomínio Fechado | Meadela – Viana do Castelo",
+      "description": "T2 localizado na Meadela – Cova, numa zona calma e residencial, a apenas 5 minutos de carro do centro de Viana do Castelo. Com acessos rápidos à porta, é uma das zonas mais procuradas para viver na cidade.Este apartamento situa-se no 2.º andar (último piso), com elevador, oferecendo privacidade, tranquilidade e excelente luminosidade ao longo de todo o dia, graças às duas frentes solares.Com uma área total de 112,65 m², o imóvel destaca-se pelas áreas amplas e bem distribuídas:Sala e cozinha, muito espaçosasCozinha totalmente equipada: placa de indução, forno, micro-ondas, exaustor, máquina de lavar loiça, máquina de lavar e secar roupa e esquentador novoDois quartos, ambos com roupeiros embutidos, sendo um deles suiteDuas casas de banho completasDuas varandas, ideais para aproveitar a luz naturalInclui ainda uma garagem fechada de 25,70 m².O apartamento está inserido num condomínio fechado, muito bem cuidado, que oferece:Jardim com mesa para convívioCampo desportivoSala de convívio na garagem com WC, mesa de bilhar, ideal para convívios ou festas de aniversário.Outros destaques:Janelas duplasEstores elétricos, todos trocados recentementeÚltimo andar (mais silêncio e privacidade)Pronto a habitarPróximo de escolas, cafés, superfícies comerciais (Lidl, Continente, Mercadona a 2 minutos de carro) e acessos rápidosIdeal tanto para habitação própria como para investimento. Valor: 309.000€ Venda direta pelo proprietário. Agradeço que imobiliárias não contactem.",
+      "location": {
+        "district": "Viana do Castelo",
+        "municipality": "Viana do Castelo",
+        "parish": "Travessa da Cova - Meadela",
+        "lat": "41.7052",
+        "lng": "-8.8437"
+      },
+      "price": "309000",
+      "property": {
+        "type": "moradia",
+        "tipology": "T2",
+        "area_total": "",
+        "area_useful": "11265",
+        "year": "",
+        "floor": "andar:: 2",
+        "condition": "novo"
+      },
+      "features": [
+        "Casas de Banho: 2",
+        "Andar: 2/2",
+        "Condição: pronto a habitar"
+      ],
+      "photos": [
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6ImtuajQ1Y3NlZHZkbzMtQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.VFvIgxl0ZnfpfvGj0Jiq718_5bk3LQyvl-gBR0V7JJE/image;s=1280x1024;q=80?width=1920",
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6ImM0OTl2cXNwd3N0ZjEtQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.I7VYscrGLAW9ShouGmu3AjKUxFQ6dgSWYhnefHaYu6I/image;s=1280x1024;q=80?width=1920",
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6ImxldnoxYThrbG1weS1BUFQiLCJ3IjpbeyJmbiI6IjY5bmxwYTdlY3FtNzEtQVBUIiwicyI6IjE0IiwicCI6IjEwLC0xMCIsImEiOiIwIn1dfQ.D1osamtcK4HFBPouFQjLRNxodeotL6aHH7FkIU27-jU/image;s=1280x1024;q=80?width=1920",
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InR0NzA2bWk4aWtobDEtQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.0b5uyu2S05FF9W3Ks57Vd6Vxv77P_qhF66_5n_rGGnY/image;s=1280x1024;q=80?width=1920",
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InAzemJvNjJ0ZXRhZTEtQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.wcjrkY1hNocrd2Iqsl9N21MVhISLM8sRwRryHobhNoU/image;s=314x236;q=80?width=1920"
+      ],
+      "advertiser": {
+        "name": "",
+        "total_ads": "",
+        "is_agency": false,
+        "url": ""
+      },
+      "signals": {
+        "watermark": false,
+        "duplicate": false,
+        "professional_photos": false,
+        "agency_keywords": []
+      },
+      "_fingerprint": "003bdabd6a5e077dcb4bf4c0b9d824df",
+      "_fsbo_score": 80,
+      "_fsbo_reasons": [
+        "Anunciante não tem histórico de múltiplos anúncios",
+        "Fotos não parecem profissionais",
+        "Telefone não disponível",
+        "5 fotos (típico de FSBO)",
+        "Anunciante confirmado como particular"
+      ]
+    },
+    {
+      "source": "imovirtual",
+      "ad_id": "1hUle",
+      "url": "https://www.imovirtual.com/hpr/pt/anuncio/t3-com-varanda-garagem-e-excelente-localizacao-ID1hUle",
+      "published_date": "2026-02-16T00:00:00.000Z",
+      "updated_date": "2026-02-16T00:00:00.000Z",
+      "timestamp": "2026-02-19T17:07:58.514Z",
+      "days_online": "3",
+      "title": "T3 com varanda, garagem e excelente localização",
+      "description": "Este apartamento de 118 m² encontra-se no 4º andar de um bloco de 5 andares, construído em 1991. Dispõe de 2 casas de banho, varanda e garagem para maior comodidade. A sua estrutura em breezeblock e janelas de alumínio garantem bom isolamento térmico. Está pronto a habitar e oferece aquecimento por outro sistema.Localizado na zona de Santa Maria Maior e Monserrate, em Viana do Castelo, beneficia de fácil acesso a serviços e infraestruturas. Nas proximidades, encontra escolas, desde jardins de infância até ao ensino secundário e superior.Para lazer e bem-estar, há parques e zonas verdes nas redondezas, além de centros de saúde, farmácias e clínicas. A zona também conta com supermercados, lojas de conveniência, centros comerciais e instalações desportivas.A sua localização permite deslocações rápidas às principais vias de transporte, incluindo a estação de comboios. Aproveite esta oportunidade de viver numa zona tranquila, com todas as comodidades ao seu alcance.Não deixe de agendar uma visita para conhecer melhor esta propriedade e verificar se atende às suas necessidades.",
+      "location": {
+        "district": "Viana do Castelo",
+        "municipality": "Viana do Castelo",
+        "parish": "Rua Aquilino Ribeiro",
+        "lat": "41.6918",
+        "lng": "-8.8347"
+      },
+      "price": "300000",
+      "property": {
+        "type": "garagem",
+        "tipology": "T3",
+        "area_total": "",
+        "area_useful": "118",
+        "year": "1991",
+        "floor": "4º andar",
+        "condition": "novo"
+      },
+      "features": [
+        "Casas de Banho: 2",
+        "Andar: 4/5",
+        "Condição: pronto a habitar"
+      ],
+      "photos": [
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InBoOTE1YnFhbTdqbjMtQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.UhnT6iXGWAQZBP3XdHNVa1_5cK7990Cz8nU5C8z2Sc0/image;s=1280x1024;q=80?width=1920"
+      ],
+      "advertiser": {
+        "name": "",
+        "total_ads": "",
+        "is_agency": false,
+        "url": ""
+      },
+      "signals": {
+        "watermark": false,
+        "duplicate": true,
+        "professional_photos": false,
+        "agency_keywords": []
+      },
+      "_fingerprint": "def0a08b30b4d9c68802a4ef142d4d73",
+      "_fsbo_score": 70,
+      "_fsbo_reasons": [
+        "Anunciante não tem histórico de múltiplos anúncios",
+        "Fotos não parecem profissionais",
+        "Telefone não disponível",
+        "1 fotos (típico de FSBO)",
+        "Anúncio duplicado detectado",
+        "Anunciante confirmado como particular"
+      ]
+    }
+  ],
+  "count": 5,
+  "meta": {
+    "total_results": 5,
+    "duplicates_removed": 0
+  }
+}

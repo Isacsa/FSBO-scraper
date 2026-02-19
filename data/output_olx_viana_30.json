@@ -1,0 +1,651 @@
+{
+  "success": true,
+  "platform": "olx",
+  "timestamp": "2026-02-19T16:28:55.282Z",
+  "duration_ms": 599903,
+  "results": [
+    {
+      "source": "olx",
+      "ad_id": "JdtrG",
+      "url": "https://www.olx.pt/d/anuncio/motor-fora-de-bordo-IDJdtrG.html",
+      "published_date": "2026-01-22T00:00:00.000Z",
+      "updated_date": "",
+      "timestamp": "2026-02-19T16:20:11.277Z",
+      "days_online": "28",
+      "title": "Motor Fora de Bordo",
+      "description": "- Motor a 4 tempos; - 6 horas de trabalho; - 15 CV.",
+      "location": {
+        "district": "",
+        "municipality": "",
+        "parish": "",
+        "lat": "",
+        "lng": ""
+      },
+      "price": "1800",
+      "property": {
+        "type": "",
+        "tipology": "",
+        "area_total": "",
+        "area_useful": "",
+        "year": "2026",
+        "floor": "",
+        "condition": "novo"
+      },
+      "features": [],
+      "photos": [
+        "https://ireland.apollo.olxcdn.com:443/v1/files/r1guxpty7in43-PT/image;s=768x1024?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/sofh5qg663n52-PT/image;s=1024x768?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/akeuhtope94s2-PT/image;s=768x1024?width=1920"
+      ],
+      "advertiser": {
+        "name": "paulo79preto",
+        "total_ads": "1",
+        "is_agency": false,
+        "url": "https://www.olx.pt/ads/user/uq3ho/"
+      },
+      "signals": {
+        "watermark": false,
+        "duplicate": false,
+        "professional_photos": false,
+        "agency_keywords": []
+      },
+      "_fingerprint": "84bba6c348f2995f8cef9dd9573c1c04",
+      "_status": "NEW",
+      "_first_seen": "2026-02-19T16:28:55.279Z",
+      "_last_seen": "2026-02-19T16:28:55.279Z",
+      "_changed_fields": [],
+      "_fsbo_score": 75,
+      "_fsbo_reasons": [
+        "Nome do anunciante não parece ser agência",
+        "Fotos não parecem profissionais",
+        "Telefone não disponível",
+        "3 fotos (típico de FSBO)",
+        "Anunciante confirmado como particular"
+      ]
+    },
+    {
+      "source": "olx",
+      "ad_id": "IX5IA",
+      "url": "https://www.olx.pt/d/anuncio/sepultura-lugar-no-cemitrio-de-viana-do-castelo-IDIX5IA.html",
+      "published_date": "2026-02-10T00:00:00.000Z",
+      "updated_date": "",
+      "timestamp": "2026-02-19T16:20:31.506Z",
+      "days_online": "9",
+      "title": "Sepultura / Lugar no cemitério de Viana do Castelo.",
+      "description": "Sepultura no cemitério de Viana do Castelo bem situado com acesso Campa Limpa e vazia Sepultura completa Em marbra cinzenta 6/7 lugares no minimo 13000€",
+      "location": {
+        "district": "",
+        "municipality": "",
+        "parish": "",
+        "lat": "",
+        "lng": ""
+      },
+      "price": "13000",
+      "property": {
+        "type": "terreno",
+        "tipology": "",
+        "area_total": "",
+        "area_useful": "",
+        "year": "2026",
+        "floor": "",
+        "condition": "novo"
+      },
+      "features": [
+        "Ano: 2026"
+      ],
+      "photos": [
+        "https://ireland.apollo.olxcdn.com:443/v1/files/dup0lsjh2kfn2-PT/image;s=480x469?width=1920"
+      ],
+      "advertiser": {
+        "name": "Jose/ pedro",
+        "total_ads": "1",
+        "is_agency": false,
+        "url": "https://www.olx.pt/ads/user/ueV1m/"
+      },
+      "signals": {
+        "watermark": false,
+        "duplicate": false,
+        "professional_photos": false,
+        "agency_keywords": []
+      },
+      "_fingerprint": "941bf69521afbe15f38d2a7175a1f9c3",
+      "_status": "NEW",
+      "_first_seen": "2026-02-19T16:28:55.279Z",
+      "_last_seen": "2026-02-19T16:28:55.279Z",
+      "_changed_fields": [],
+      "_fsbo_score": 75,
+      "_fsbo_reasons": [
+        "Nome do anunciante não parece ser agência",
+        "Fotos não parecem profissionais",
+        "Telefone não disponível",
+        "1 fotos (típico de FSBO)",
+        "Anunciante confirmado como particular"
+      ]
+    },
+    {
+      "source": "olx",
+      "ad_id": "GEQ9P",
+      "url": "https://www.olx.pt/d/anuncio/livros-juvenis-leve-3-pague-2-IDGEQ9P.html",
+      "published_date": "2026-01-24T00:00:00.000Z",
+      "updated_date": "",
+      "timestamp": "2026-02-19T16:22:24.779Z",
+      "days_online": "26",
+      "title": "Livros juvenis | Leve 3, pague 2",
+      "description": "Pack 1- Feras e Heróis - Sepron, a serpente marinha (tem dedicatória) -5 euros Feras e Heróis – Epos, o pássaro de fogo – 5 euros Feras e Heróis – Zepha, a lula gigante – 5 euros Feras e Heróis – Arachnid, a rainha das aranhas – 5 euros Feras e Heróis – Trillion, o leão de três cabeças – VENDIDO Feras e Heróis -Sting, o Homem-escorpião – VENDIDO Força Bovina de Intervenção – Os exter-muu-nadores – 5 euros Força Bovina de Intervenção – Um natal e-muu-cionante – 5 euros Astrossauros – O mistério dos raptores – VENDIDO Pack 2- O jovem Indiana Jones e a cidade secreta – VENDIDO O jovem Indiana Jones e a princesa do perigo – VENDIDO O jovem Indiana Jones e a vingança cigana – VENDIDO O jovem Indiana Jones e a aventura do safari – VENDIDO O jovem Indiana Jones e a viagem ao império das sombras – VENDIDO Pack 3 Uma aventura na falésia – 5 euros Uma aventura na biblioteca – 5 euros Uma aventura no labirinto misterioso – 5 euros Uma aventura no alto mar – 5 euros Uma aventura na Amazónia – 5 euros Uma aventura no Pulo do Lobo – 5 euros Pack 4 O clube Tiara – A princesa Emília – 5 euros Maria e Manuel – Gémeos em sarilhos – 5 euros Pónei Mágico – Férias Mágicas – 5 euros Gatinha mágica – Passos de dança – 5 euros Gatinho mágico – Mistério à beira mar – 5 euros Cachorros Espiões – Em busca do tesouro – 5 euros Sininho anda com azar – 5 euros Lília e a planta misteriosa – 5 euros Abadazad, o ladrão de sonhos – 5 euros Pack 5 O diário de um banana – o Rodrick é terrível – 7,5 euros O bando dos quatro – o caso do melro falante – 5 euros As cronicas de Nárnia – A viagem do Caminheiro da Alvorada – 5 euros Pack 6 As aventuras de tintim – Rumo à lua – VENDIDO Asterix – Os louros de César – VENDIDO Asterix e os seus amigos – 7,5 euros Há fogo na floresta – 4 euros Pack 7 Mundo Fantástico – Grandes Felinos – 5 euros A enciclopédia dos dinossauros – 15 euros Pack 8 Contos maravilhosos – 2,5 euros Resposta às perguntas das crianças – a natureza – 2,5 euros A minha primeira Bíblia – 3,5 euros O dicionário de Charlie Brown – 2,5 euros LEVE 3, PAGUE 2. PORTES INCLUÍDOS. Qualquer dúvida, não hesite em me contactar!",
+      "location": {
+        "district": "",
+        "municipality": "",
+        "parish": "",
+        "lat": "",
+        "lng": ""
+      },
+      "price": "1",
+      "property": {
+        "type": "apartamento",
+        "tipology": "",
+        "area_total": "",
+        "area_useful": "",
+        "year": "2018",
+        "floor": "",
+        "condition": "novo"
+      },
+      "features": [],
+      "photos": [
+        "https://ireland.apollo.olxcdn.com:443/v1/files/009j7qbwlodq2-PT/image;s=1080x1080?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/9uatlars2hov1-PT/image;s=960x720?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/uqbovobnopx62-PT/image;s=960x720?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/gqa3fi9rpd2-PT/image;s=960x720?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/nt6owfxk3sf21-PT/image;s=960x720?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/1f6j5rei8h4s1-PT/image;s=909x681?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/19pgqj3lgh642-PT/image;s=960x720?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/2k2bssjdls3j-PT/image;s=960x720?width=1920"
+      ],
+      "advertiser": {
+        "name": "João Pereira",
+        "total_ads": "1",
+        "is_agency": false,
+        "url": "https://www.olx.pt/ads/user/3VEOp/"
+      },
+      "signals": {
+        "watermark": false,
+        "duplicate": false,
+        "professional_photos": false,
+        "agency_keywords": []
+      },
+      "_fingerprint": "fbdbd4eddf7ee1529b627093a6e06626",
+      "_status": "NEW",
+      "_first_seen": "2026-02-19T16:28:55.279Z",
+      "_last_seen": "2026-02-19T16:28:55.279Z",
+      "_changed_fields": [],
+      "_fsbo_score": 70,
+      "_fsbo_reasons": [
+        "Nome do anunciante não parece ser agência",
+        "Fotos não parecem profissionais",
+        "Telefone não disponível",
+        "8 fotos (típico de FSBO)",
+        "Descrição muito longa (possível agência)",
+        "Anunciante confirmado como particular"
+      ]
+    },
+    {
+      "source": "olx",
+      "ad_id": "IEof5",
+      "url": "https://www.olx.pt/d/anuncio/habitao-indstria-clnicas-hospitalares-transitrios-IDIEof5.html",
+      "published_date": "2026-01-27T00:00:00.000Z",
+      "updated_date": "",
+      "timestamp": "2026-02-19T16:23:22.401Z",
+      "days_online": "23",
+      "title": "Habitação, Indústria, Clínicas Hospitalares, transitários",
+      "description": "Duas parcelas de terreno dum mesmo artigo matricial, sitas no Monte da Óla, em Vila Nova de Anha, Viana do Castelo. Tratam-se de Terrenos para desenvolvimento urbanístico, localizados em Zona de expansão das localidades de Vila Nova de Anha e de Vila Fria, com boas acessibilidades rodoviárias (A28 e EN 13), bem como, ferroviárias através da linha do Minho (Porto - Vigo). Dotados de um bom enquadramento urbano, Perto da Escola do Monte da Óla e do Santoinho, bem como de toda uma boa oferta de comércio, indústria e serviços de proximidade. distam: 2km da estação dos Caminhos de Ferro de Darque; 4km da praia do Rodanho; 4km da Zona Industrial do Neiva; 5Km do porto de mar e 6km do centro da capital Viana do Castelo. Acessos à EN13 e directos à A28 Os desenvolvimentos urbanísticos permitidos, nesta área de construção, serão definidos de acordo com o Município de Viana do Castelo. Podem ser vendidas em conjunto ou separadas. Excelente também para Grandes Superfícies, transitários e ou para restauração Área do Terreno: 33.325,81 m2 = 15.536,57 m2, a Nascente + 17.789,24 m2, a Poente Classe Energética - Isento Servidas de linhas de Alta e de Baixa tensão e de rede de água Preço Negociável - Possibilidade de PERMUTA por Apartamentos na Póvoa de Varzim ou Vila do Conde. Aceitam-se PROPOSTAS Preço 150 €iros o m2",
+      "location": {
+        "district": "Viana do Castelo",
+        "municipality": "Viana do Castelo",
+        "parish": "Viana Do Castelo (Santa Maria Maior E Monserrate) E Meadela",
+        "lat": "41.6918",
+        "lng": "-8.8347"
+      },
+      "price": "4800000",
+      "property": {
+        "type": "terreno",
+        "tipology": "",
+        "area_total": "",
+        "area_useful": "",
+        "year": "2026",
+        "floor": "",
+        "condition": "novo"
+      },
+      "features": [
+        "Ano: 2026"
+      ],
+      "photos": [
+        "https://ireland.apollo.olxcdn.com:443/v1/files/rz3ij0ugju423-PT/image;s=942x1615?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/h38k43cbyyih1-PT/image;s=540x1230?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/npayvajzbdxe-PT/image;s=846x760?width=1920"
+      ],
+      "advertiser": {
+        "name": "Kiko",
+        "total_ads": "2",
+        "is_agency": false,
+        "url": "https://www.olx.pt/ads/user/xWEY/"
+      },
+      "signals": {
+        "watermark": false,
+        "duplicate": false,
+        "professional_photos": false,
+        "agency_keywords": []
+      },
+      "_fingerprint": "aa2cb1fdbf784f13f9611cd014c467a5",
+      "_status": "NEW",
+      "_first_seen": "2026-02-19T16:28:55.279Z",
+      "_last_seen": "2026-02-19T16:28:55.279Z",
+      "_changed_fields": [],
+      "_fsbo_score": 75,
+      "_fsbo_reasons": [
+        "Nome do anunciante não parece ser agência",
+        "Fotos não parecem profissionais",
+        "Telefone não disponível",
+        "3 fotos (típico de FSBO)",
+        "Anunciante confirmado como particular"
+      ]
+    },
+    {
+      "source": "olx",
+      "ad_id": "JcgsC",
+      "url": "https://www.olx.pt/d/anuncio/relgio-de-madeira-antigo-IDJcgsC.html",
+      "published_date": "2026-02-19T12:57:00.000Z",
+      "updated_date": "",
+      "timestamp": "2026-02-19T16:23:40.748Z",
+      "days_online": "0",
+      "title": "Relógio de madeira antigo",
+      "description": "Relógio de parede antigo de madeira com sua chave.",
+      "location": {
+        "district": "",
+        "municipality": "",
+        "parish": "",
+        "lat": "",
+        "lng": ""
+      },
+      "price": "150",
+      "property": {
+        "type": "",
+        "tipology": "",
+        "area_total": "",
+        "area_useful": "",
+        "year": "2026",
+        "floor": "",
+        "condition": "novo"
+      },
+      "features": [
+        "Condição: Em bom estado"
+      ],
+      "photos": [
+        "https://ireland.apollo.olxcdn.com:443/v1/files/xnc0fawv12o3-PT/image;s=1224x1632?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/sga3n0qg6exu2-PT/image;s=1224x1632?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/tnu58qii3ozi-PT/image;s=1224x1632?width=1920"
+      ],
+      "advertiser": {
+        "name": "adelia",
+        "total_ads": "3",
+        "is_agency": false,
+        "url": "https://www.olx.pt/ads/user/upQZO/"
+      },
+      "signals": {
+        "watermark": false,
+        "duplicate": false,
+        "professional_photos": false,
+        "agency_keywords": []
+      },
+      "_fingerprint": "07736923b8b7482f5bdd220f8899a543",
+      "_status": "NEW",
+      "_first_seen": "2026-02-19T16:28:55.279Z",
+      "_last_seen": "2026-02-19T16:28:55.279Z",
+      "_changed_fields": [],
+      "_fsbo_score": 75,
+      "_fsbo_reasons": [
+        "Nome do anunciante não parece ser agência",
+        "Fotos não parecem profissionais",
+        "Telefone não disponível",
+        "3 fotos (típico de FSBO)",
+        "Anunciante confirmado como particular"
+      ]
+    },
+    {
+      "source": "olx",
+      "ad_id": "JfO0J",
+      "url": "https://www.olx.pt/d/anuncio/mm-multisservios-IDJfO0J.html",
+      "published_date": "2026-02-16T00:00:00.000Z",
+      "updated_date": "",
+      "timestamp": "2026-02-19T16:24:17.231Z",
+      "days_online": "3",
+      "title": "MM Multisserviços",
+      "description": "Queres Remodelar ou consertar Pladur Pintura interiores e exterior Lavagem de telhados",
+      "location": {
+        "district": "",
+        "municipality": "",
+        "parish": "",
+        "lat": "",
+        "lng": ""
+      },
+      "price": "",
+      "property": {
+        "type": "",
+        "tipology": "",
+        "area_total": "",
+        "area_useful": "",
+        "year": "2023",
+        "floor": "",
+        "condition": ""
+      },
+      "features": [],
+      "photos": [
+        "https://ireland.apollo.olxcdn.com:443/v1/files/iylvf9u046kf3-PT/image;s=1088x651?width=1920"
+      ],
+      "advertiser": {
+        "name": "Marcos Machado",
+        "total_ads": "1",
+        "is_agency": false,
+        "url": "https://www.olx.pt/ads/user/iCZJZ/"
+      },
+      "signals": {
+        "watermark": false,
+        "duplicate": false,
+        "professional_photos": false,
+        "agency_keywords": []
+      },
+      "_fingerprint": "f0147aba468b690862ff1615e1cc0f79",
+      "_status": "NEW",
+      "_first_seen": "2026-02-19T16:28:55.279Z",
+      "_last_seen": "2026-02-19T16:28:55.279Z",
+      "_changed_fields": [],
+      "_fsbo_score": 75,
+      "_fsbo_reasons": [
+        "Nome do anunciante não parece ser agência",
+        "Fotos não parecem profissionais",
+        "Telefone não disponível",
+        "1 fotos (típico de FSBO)",
+        "Anunciante confirmado como particular"
+      ]
+    },
+    {
+      "source": "olx",
+      "ad_id": "IXaZw",
+      "url": "https://www.olx.pt/d/anuncio/caldeira-a-gs-riello-start-24-ki-ln-como-nova-IDIXaZw.html",
+      "published_date": "2026-02-11T00:00:00.000Z",
+      "updated_date": "",
+      "timestamp": "2026-02-19T16:25:48.736Z",
+      "days_online": "8",
+      "title": "Caldeira a gás Riello Start 24 KI LN – Como nova",
+      "description": "Vendo caldeira a gás atmosférica Riello Start 24 KI LN, modelo de 2022, em estado praticamente novo. Funções: Aquecimento de águas sanitárias (AQS) Aquecimento central Ideal para moradias ou apartamentos com instalação de gás natural. Funcionamento silencioso e eficiente, com dimensões compactas que facilitam a instalação em espaços reduzidos. Dimensões: Altura: 73,7 cm (+6,6 cm para ligação dos tubos superiores) Largura: 40 cm Profundidade: 33 cm Equipamento com pouco uso, retirado em perfeito funcionamento. Excelente oportunidade para quem procura uma solução fiável e económica.",
+      "location": {
+        "district": "",
+        "municipality": "",
+        "parish": "",
+        "lat": "",
+        "lng": ""
+      },
+      "price": "400",
+      "property": {
+        "type": "moradia",
+        "tipology": "T24",
+        "area_total": "",
+        "area_useful": "",
+        "year": "2022",
+        "floor": "",
+        "condition": "novo"
+      },
+      "features": [
+        "Ano: 2022",
+        "Condição: Usado"
+      ],
+      "photos": [
+        "https://ireland.apollo.olxcdn.com:443/v1/files/fjadnu2c6ywz1-PT/image;s=1504x2000?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/0ku95ucjnrm23-PT/image;s=2000x1504?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/qzvcra4c7rvv1-PT/image;s=2000x1504?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/53rww3kjxwwi3-PT/image;s=1200x1600?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/ni7u7ptwryal3-PT/image;s=1200x1600?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/vpwtjafcf5x93-PT/image;s=1200x1600?width=1920"
+      ],
+      "advertiser": {
+        "name": "João Martins",
+        "total_ads": "2",
+        "is_agency": false,
+        "url": "https://www.olx.pt/ads/user/aTnER/"
+      },
+      "signals": {
+        "watermark": false,
+        "duplicate": false,
+        "professional_photos": false,
+        "agency_keywords": []
+      },
+      "_fingerprint": "56273eac916b784c37ce367bc393f3e8",
+      "_status": "NEW",
+      "_first_seen": "2026-02-19T16:28:55.279Z",
+      "_last_seen": "2026-02-19T16:28:55.279Z",
+      "_changed_fields": [],
+      "_fsbo_score": 80,
+      "_fsbo_reasons": [
+        "Nome do anunciante não parece ser agência",
+        "Fotos não parecem profissionais",
+        "Telefone não disponível",
+        "6 fotos (típico de FSBO)",
+        "Descrição com tamanho adequado",
+        "Anunciante confirmado como particular"
+      ]
+    },
+    {
+      "source": "olx",
+      "ad_id": "JdBIp",
+      "url": "https://www.olx.pt/d/anuncio/casa-para-arrendar-conforto-e-tranquilidade-IDJdBIp.html",
+      "published_date": "2026-02-19T00:00:00.000Z",
+      "updated_date": "",
+      "timestamp": "2026-02-19T16:26:24.588Z",
+      "days_online": "0",
+      "title": "Casa para Arrendar - Conforto e Tranquilidade",
+      "description": "Excelente casa. Aconchegante e perfeita para criar bons momentos. Ideal para quem busca conforto e praticidade no dia a dia. Ambiente tranquilo e agradável. Ótima localização, com fácil acesso a comércios e serviços.",
+      "location": {
+        "district": "Viana do Castelo",
+        "municipality": "Viana do Castelo",
+        "parish": "Viana Do Castelo (Santa Maria Maior E Monserrate) E Meadela",
+        "lat": "41.6918",
+        "lng": "-8.8347"
+      },
+      "price": "1000",
+      "property": {
+        "type": "moradia",
+        "tipology": "T3",
+        "area_total": "90",
+        "area_useful": "90",
+        "year": "2026",
+        "floor": "",
+        "condition": "usado"
+      },
+      "features": [
+        "Certificado Energético: A",
+        "Casas de Banho: 1",
+        "Ano: 2026",
+        "Condição: Usado"
+      ],
+      "photos": [
+        "https://ireland.apollo.olxcdn.com:443/v1/files/bqd2jfl1gmn01-PT/image;s=3024x3024?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/34qhou1a5ubc1-PT/image;s=3024x3024?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/dvduz46u1gay-PT/image;s=3024x3024?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/othxb8fe0aaw2-PT/image;s=3024x3024?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/bmtwg5rqg6l11-PT/image;s=3024x3024?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/8v4p7nuntreb-PT/image;s=3024x3024?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/jujg5vqr5jsp3-PT/image;s=3024x3024?width=1920"
+      ],
+      "advertiser": {
+        "name": "Daniela Leitão",
+        "total_ads": "1",
+        "is_agency": false,
+        "url": "https://www.olx.pt/ads/user/3H9sy/"
+      },
+      "signals": {
+        "watermark": false,
+        "duplicate": false,
+        "professional_photos": false,
+        "agency_keywords": []
+      },
+      "_fingerprint": "cd21d29dc47d31af61cc42a4b313c6fd",
+      "_status": "NEW",
+      "_first_seen": "2026-02-19T16:28:55.279Z",
+      "_last_seen": "2026-02-19T16:28:55.279Z",
+      "_changed_fields": [],
+      "_fsbo_score": 80,
+      "_fsbo_reasons": [
+        "Nome do anunciante não parece ser agência",
+        "Fotos não parecem profissionais",
+        "Telefone não disponível",
+        "7 fotos (típico de FSBO)",
+        "Descrição com tamanho adequado",
+        "Anunciante confirmado como particular"
+      ]
+    },
+    {
+      "source": "olx",
+      "ad_id": "IyEO7",
+      "url": "https://www.olx.pt/d/anuncio/oculos-de-sol-prada-IDIyEO7.html",
+      "published_date": "2026-02-03T00:00:00.000Z",
+      "updated_date": "",
+      "timestamp": "2026-02-19T16:28:36.928Z",
+      "days_online": "16",
+      "title": "Oculos de sol Prada",
+      "description": "Estimados com algumas marcas normais de uso.",
+      "location": {
+        "district": "",
+        "municipality": "",
+        "parish": "",
+        "lat": "",
+        "lng": ""
+      },
+      "price": "75",
+      "property": {
+        "type": "",
+        "tipology": "",
+        "area_total": "",
+        "area_useful": "",
+        "year": "2021",
+        "floor": "",
+        "condition": "novo"
+      },
+      "features": [
+        "Condição: Em bom estado"
+      ],
+      "photos": [
+        "https://ireland.apollo.olxcdn.com:443/v1/files/jsnfkrecsvsq-PT/image;s=750x1000?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/rnbglvhfv4mh3-PT/image;s=750x1000?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/tp3qtp8p0ic2-PT/image;s=750x1000?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/zchnk07go3mb-PT/image;s=750x1000?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/bj3kyx56s9v5-PT/image;s=750x1000?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/cimwtxdyp49k-PT/image;s=750x1000?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/6pe26z0q77c13-PT/image;s=750x1000?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/l9ezj0il9pax-PT/image;s=1000x750?width=1920"
+      ],
+      "advertiser": {
+        "name": "Sofia Malheiro",
+        "total_ads": "4",
+        "is_agency": false,
+        "url": "https://www.olx.pt/ads/user/b01P5/"
+      },
+      "signals": {
+        "watermark": false,
+        "duplicate": false,
+        "professional_photos": false,
+        "agency_keywords": []
+      },
+      "_fingerprint": "487d92b5791b88aa916c2367a3c402ce",
+      "_status": "NEW",
+      "_first_seen": "2026-02-19T16:28:55.279Z",
+      "_last_seen": "2026-02-19T16:28:55.279Z",
+      "_changed_fields": [],
+      "_fsbo_score": 75,
+      "_fsbo_reasons": [
+        "Nome do anunciante não parece ser agência",
+        "Fotos não parecem profissionais",
+        "Telefone não disponível",
+        "8 fotos (típico de FSBO)",
+        "Anunciante confirmado como particular"
+      ]
+    },
+    {
+      "source": "olx",
+      "ad_id": "Je2Q3",
+      "url": "https://www.olx.pt/d/anuncio/ford-mondeo-1-8-tdci-2008-IDJe2Q3.html",
+      "published_date": "2026-01-28T00:00:00.000Z",
+      "updated_date": "",
+      "timestamp": "2026-02-19T16:28:55.233Z",
+      "days_online": "22",
+      "title": "Ford Mondeo 1.8 TDCI - 2008",
+      "description": "Ford Mondeo em bom estado, mas com motor avariado.",
+      "location": {
+        "district": "",
+        "municipality": "",
+        "parish": "",
+        "lat": "",
+        "lng": ""
+      },
+      "price": "2000",
+      "property": {
+        "type": "",
+        "tipology": "",
+        "area_total": "",
+        "area_useful": "",
+        "year": "2008",
+        "floor": "",
+        "condition": "novo"
+      },
+      "features": [
+        "Ano: 2008",
+        "Condição: Usado"
+      ],
+      "photos": [
+        "https://ireland.apollo.olxcdn.com:443/v1/files/o1adxyhitu9v3-PT/image;s=1000x1000?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/x6q93agmgmsc1-PT/image;s=1000x750?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/567zxwz2b2462-PT/image;s=1000x750?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/e3z1kn78yads2-PT/image;s=1000x750?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/cesy4qj8h3dk3-PT/image;s=1000x750?width=1920",
+        "https://ireland.apollo.olxcdn.com:443/v1/files/1vxq6tzz3ljk3-PT/image;s=750x1000?width=1920"
+      ],
+      "advertiser": {
+        "name": "João",
+        "total_ads": "1",
+        "is_agency": false,
+        "url": "https://www.olx.pt/ads/user/I6lB/"
+      },
+      "signals": {
+        "watermark": false,
+        "duplicate": false,
+        "professional_photos": false,
+        "agency_keywords": []
+      },
+      "_fingerprint": "8b96bcad6af17b76032f3f12b6a7e4bb",
+      "_status": "NEW",
+      "_first_seen": "2026-02-19T16:28:55.279Z",
+      "_last_seen": "2026-02-19T16:28:55.279Z",
+      "_changed_fields": [],
+      "_fsbo_score": 75,
+      "_fsbo_reasons": [
+        "Nome do anunciante não parece ser agência",
+        "Fotos não parecem profissionais",
+        "Telefone não disponível",
+        "6 fotos (típico de FSBO)",
+        "Anunciante confirmado como particular"
+      ]
+    }
+  ],
+  "count": 10,
+  "meta": {
+    "total_results": 10,
+    "duplicates_removed": 0,
+    "incremental": {
+      "scope_key": "olx|https://www.olx.pt/meadela/q-moradia/",
+      "state_file": "/Users/isacsa/fsbo-scraper/data/incremental_state.json",
+      "timestamp": "2026-02-19T16:28:55.279Z",
+      "new": 10,
+      "updated": 0,
+      "unchanged": 0,
+      "removed": 0,
+      "removed_keys": []
+    }
+  }
+}

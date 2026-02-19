@@ -1,0 +1,213 @@
+{
+  "success": true,
+  "platform": "imovirtual",
+  "timestamp": "2026-02-19T16:08:40.679Z",
+  "duration_ms": 58407,
+  "results": [
+    {
+      "source": "imovirtual",
+      "ad_id": "1hIf2",
+      "url": "https://www.imovirtual.com/pt/anuncio/moradia-em-granito-amarelo-t1-t2-independentes-ponte-de-lima-ID1hIf2",
+      "published_date": "2026-02-19T00:00:00.000Z",
+      "updated_date": "2026-02-19T00:00:00.000Z",
+      "timestamp": "2026-02-19T16:08:07.882Z",
+      "days_online": "0",
+      "title": "Moradia em granito amarelo | T1 + T2 independentes | Ponte de Lima",
+      "description": "Moradia tradicional em granito amarelo, com vista privilegiada sobre o centro histórico de Ponte de Lima. Composta por dois pisos de utilização independente (T1 + T2), localiza-se a apenas 300 metros da emblemática ponte da vila mais antiga de Portugal. Conta ainda com uma varanda com vista espetacular sobre a zona histórica da vila.O imóvel foi alvo de uma reabilitação profunda, quer ao nível exterior (fachadas e cobertura), quer ao nível interior. A moradia encontra-se em fase final de acabamentos, com a cozinha, casas de banho e pavimentos ainda por concluir, permitindo personalização ao gosto do futuro proprietário.As obras continuam em curso, pelo que o preço poderá ser ajustado à medida que mais tarefas de finalização forem concluídas.Distribuição:-Rés-do-chão (T1): espaço autónomo com cozinha/sala e quarto, com acesso direto ao logradouro.-Primeiro andar (T2): dois quartos, varanda, boa exposição solar e ligação ao exterior.As duas frações dispõem de entradas independentes e infraestruturas de água e eletricidade preparadas para funcionamento autónomo.Extras e envolvente:-Logradouro privado-Poço de água-Exposição solar: Nascente, Poente e Sul-Vistas espetaculares sobre o centro histórico e ArcozeloLocalização junto ao Caminho de Santiago, numa zona residencial tranquila, com proximidade a comércio, serviços e restauração adequada para habitação própria, arrendamento ou investimento turístico.Compra diretamente ao proprietário!Excelente opção para investimento numa localização de referência no Minho.",
+      "location": {
+        "district": "Viana do Castelo",
+        "municipality": "Ponte de Lima",
+        "parish": "Caminho do Antepaço de Baixo - Arcozelo",
+        "lat": "41.6918",
+        "lng": "-8.8347"
+      },
+      "price": "270000",
+      "property": {
+        "type": "moradia",
+        "tipology": "T3",
+        "area_total": "",
+        "area_useful": "122",
+        "year": "",
+        "floor": "",
+        "condition": "novo"
+      },
+      "features": [
+        "Casas de Banho: 2",
+        "Condição: por terminar"
+      ],
+      "photos": [
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6ImFkMmI2ZXVrdGZzMTMtQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.goh3cbAqOUh7alQcfhOexVC-0qOM9mh1aue-40d2dz0/image;s=1280x1024;q=80?width=1920",
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6Imd6bmFha2dwb21wZDMtQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.S6pmA84d_d3pjlPIo7oLDx13Z-JFUzBzg8hlYToAJWw/image;s=1280x1024;q=80?width=1920",
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6Imp4M29tYmViajh3bS1BUFQiLCJ3IjpbeyJmbiI6IjY5bmxwYTdlY3FtNzEtQVBUIiwicyI6IjE0IiwicCI6IjEwLC0xMCIsImEiOiIwIn1dfQ.eIE2zgS_J44REg1-FC-MAXNCMQIsjdZ0L18DsGm5iLM/image;s=1280x1024;q=80?width=1920",
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6Inl0eHNocGJvNGJzMDEtQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.zAVWvEA81bOoHsDcbv2p5V-HuBZ56G5fPB2C2-ahX_U/image;s=1280x1024;q=80?width=1920",
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6Ing5NG54dnRocW12by1BUFQiLCJ3IjpbeyJmbiI6IjY5bmxwYTdlY3FtNzEtQVBUIiwicyI6IjE0IiwicCI6IjEwLC0xMCIsImEiOiIwIn1dfQ.6XmqWdonI9MyrrKHU1rchpl9uaICLgU4fKG9ljB64ao/image;s=314x236;q=80?width=1920"
+      ],
+      "advertiser": {
+        "name": "",
+        "total_ads": "",
+        "is_agency": false,
+        "url": ""
+      },
+      "signals": {
+        "watermark": false,
+        "duplicate": false,
+        "professional_photos": false,
+        "agency_keywords": []
+      },
+      "_fingerprint": "f99d68b2b4ae86047b2be87e3e6826dd",
+      "_status": "NEW",
+      "_first_seen": "2026-02-19T16:08:40.677Z",
+      "_last_seen": "2026-02-19T16:08:40.677Z",
+      "_changed_fields": [],
+      "_fsbo_score": 80,
+      "_fsbo_reasons": [
+        "Anunciante não tem histórico de múltiplos anúncios",
+        "Fotos não parecem profissionais",
+        "Telefone não disponível",
+        "5 fotos (típico de FSBO)",
+        "Anunciante confirmado como particular"
+      ]
+    },
+    {
+      "source": "imovirtual",
+      "ad_id": "1hHrO",
+      "url": "https://www.imovirtual.com/pt/anuncio/casa-em-pedra-com-5-000-m-de-terreno-stone-house-5-000-m-of-land-ID1hHrO",
+      "published_date": "2026-02-11T00:00:00.000Z",
+      "updated_date": "2026-02-11T00:00:00.000Z",
+      "timestamp": "2026-02-19T16:08:23.951Z",
+      "days_online": "8",
+      "title": "Casa em pedra com 5.000 m² de terreno| Stone house, 5.000 m² of land",
+      "description": "PortuguêsDescriçãoEntre o verde do Minho e a serenidade do campo, esta propriedade alia espaço, natureza e conforto cenário calmo e autêntico.A casa principal, construída em pedra e cuidadosamente renovada, preserva o caráter rústico original: com tetos em madeira, paredes em granito e uma cozinha tradicional com lareira. Oferecendo, ao mesmo tempo, o conforto dos dias de hoje, como ar condicionado presente nos quartos.Características principais• Terreno total: 5.000 m²• Área construída: 110 m²• Adega e anexos (para arrumos, atelier ou ampliação)• 3 nascentes de água natural à superfície• Lago rodeado de vegetação e zona de sombra• Vinhas de vinho tinto e branco• Espaço de estacionamento amplo, incluindo área para caravanaDistribuição interior• Sala ampla e luminosa• Cozinha rústica em pedra com lareira• Dois quartos com ar condicionado• Casa de banho renovada• Anexos exteriores e zonas de arrumoAmbienteA propriedade oferece privacidade, bons acessos e um envolvente verde com vista aberta para as colinas.Um espaço versátil, ideal para quem procura viver com tranquilidade e qualidade, desenvolver um pequeno projeto rural ou simplesmente ter um espaço, luz e tempo para respirar.Localização• A 4 km de supermercado e hospital• Braga – 32 km | Viana do Castelo – 48 km | Porto – 85 km | Vigo – 80 kmUma casa com história, inserida na paisagem minhota, onde o conforto e a simplicidade se encontram em equilíbrio._____________________________________________________________________________EnglishStone house with 5,000 m² of land, vineyards and a pond, between Braga and Viana do Castelo | 350.000 €Amid the green hills of Minho and the quiet rhythm of the countryside, this property brings together space, nature and comfort in an authentic, peaceful setting.The main stone house has been carefully renovated, preserving its rustic charm: wooden ceilings, granite walls, and a traditional kitchen with a fireplace, while offering modern comfort and efficiency of modern living, including air conditioning in the bedrooms.Main features• Land area: 5,000 m²• Built area: 110 m²• Wine cellar and outbuildings (for storage, workshop or expansion)• Three natural water springs• Private pond surrounded by greenery• Vineyards producing red and white wine• Large parking area, including space for a caravanInterior layout• Spacious and bright living room• Rustic stone kitchen with fireplace• Two bedrooms with air conditioning• Renovated bathroom• Storage rooms and external annexesEnvironmentThe property offers privacy, easy access and a lush green setting with open views over the hills. It´s versatile space, ideal for those seeking a peaceful, high-quality lifestyle, to develop a rural project, or simply to enjoy a place with light, space and time to breathe.Location• Supermarket and hospital within 4 km• Braga – 32 km | Viana do Castelo – 48 km | Porto – 85 km | Vigo (Spain) – 80 kmA house with history and balance — where comfort meets simplicity in the heart of the Minho countryside.",
+      "location": {
+        "district": "Viana do Castelo",
+        "municipality": "Ponte da Barca",
+        "parish": "4980-469",
+        "lat": "41.6918",
+        "lng": "-8.8347"
+      },
+      "price": "350000",
+      "property": {
+        "type": "moradia",
+        "tipology": "T2",
+        "area_total": "",
+        "area_useful": "110",
+        "year": "2026",
+        "floor": "",
+        "condition": "novo"
+      },
+      "features": [
+        "Casas de Banho: 1",
+        "Condição: sem informação"
+      ],
+      "photos": [
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InV5a2ZpaGh2bGlueC1BUFQiLCJ3IjpbeyJmbiI6IjY5bmxwYTdlY3FtNzEtQVBUIiwicyI6IjE0IiwicCI6IjEwLC0xMCIsImEiOiIwIn1dfQ.JcaTkdwclq5NncfR1CoRpFq_qH8EnbKw5uV-hyQtLt4/image;s=1280x1024;q=80?width=1920",
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6InB6cm9ldmtna21qZDEtQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.mz4UbrGk3-zcRUQsPxiGB9QXb6UyfrDu4ibqBpOaGBk/image;s=1280x1024;q=80?width=1920",
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6ImlsMDkxMDlmcGl5bDEtQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.qyVCR-Azw6SZ9y6CLwbkGR1bNCZ-Abp2E-R02eLMcdw/image;s=1280x1024;q=80?width=1920",
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6Imlhb2ptZmx1Y2FiZTEtQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.Bb-bYZGPI725-45Apu6kQCSYV-KcfSdPQEV3AKdcSRU/image;s=1280x1024;q=80?width=1920",
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IndhbHh5MmN1dmxjZjItQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.vZtIhC9BTEZoVMg59_tpjnDUwsfJ20KZol9HtaKgR6c/image;s=314x236;q=80?width=1920"
+      ],
+      "advertiser": {
+        "name": "",
+        "total_ads": "",
+        "is_agency": false,
+        "url": ""
+      },
+      "signals": {
+        "watermark": false,
+        "duplicate": false,
+        "professional_photos": false,
+        "agency_keywords": []
+      },
+      "_fingerprint": "86d809ef5905dbeccbf57ddc94a0f711",
+      "_status": "NEW",
+      "_first_seen": "2026-02-19T16:08:40.677Z",
+      "_last_seen": "2026-02-19T16:08:40.677Z",
+      "_changed_fields": [],
+      "_fsbo_score": 75,
+      "_fsbo_reasons": [
+        "Anunciante não tem histórico de múltiplos anúncios",
+        "Fotos não parecem profissionais",
+        "Telefone não disponível",
+        "5 fotos (típico de FSBO)",
+        "Descrição muito longa (possível agência)",
+        "Anunciante confirmado como particular"
+      ]
+    },
+    {
+      "source": "imovirtual",
+      "ad_id": "1hQwJ",
+      "url": "https://www.imovirtual.com/pt/anuncio/duas-moradias-para-restauro-ID1hQwJ",
+      "published_date": "2026-02-03T00:00:00.000Z",
+      "updated_date": "2026-02-03T00:00:00.000Z",
+      "timestamp": "2026-02-19T16:08:40.646Z",
+      "days_online": "16",
+      "title": "Duas moradias para restauro",
+      "description": "Terreno com 4.750m² totalmente murado – Duas moradias para recuperar | Labruja, Ponte de LimaExcelente oportunidade de investimento no coração do Alto Minho!Situado na tranquila freguesia de Labruja, Ponte de Lima, este magnífico terreno com 4.750m², totalmente murado (muro entre 1,5m e 2m de altura), oferece total privacidade, envolvido pela natureza e com ótima exposição solar.No interior da propriedade encontram-se duas construções:Casa em pedra anterior a 1950Área aproximada de 100m²Construção tradicional em pedraIdeal para recuperação mantendo o traço rústico minhotoMoradia de 2002Cerca de 200m²Em fase de legalizaçãoExcelente potencial para habitação própria, turismo rural ou projeto de alojamento localPiscina para recuperar, inserida num amplo logradouro com enorme potencial para zona de lazer.Características que fazem a diferença:Propriedade totalmente murada, garantindo privacidade e segurançaLocal isolado e tranquiloInserida em zona verde, com paisagem natural envolventeGrande potencial para projeto turístico (Turismo Rural / Alojamento Local) Localização privilegiada:Próxima dos Passadiços da LabrujaA poucos minutos do Caminho de Santiago Cerca de 15 minutos do centro de Ponte de LimaFácil acesso à A3",
+      "location": {
+        "district": "Viana do Castelo",
+        "municipality": "Ponte de Lima",
+        "parish": "4990-655",
+        "lat": "41.6918",
+        "lng": "-8.8347"
+      },
+      "price": "99000",
+      "property": {
+        "type": "moradia",
+        "tipology": "T3",
+        "area_total": "",
+        "area_useful": "300",
+        "year": "1950",
+        "floor": "",
+        "condition": "novo"
+      },
+      "features": [
+        "Casas de Banho: 2",
+        "Condição: sem informação"
+      ],
+      "photos": [
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6IndrMGJnc3VqOTZtNy1BUFQiLCJ3IjpbeyJmbiI6IjY5bmxwYTdlY3FtNzEtQVBUIiwicyI6IjE0IiwicCI6IjEwLC0xMCIsImEiOiIwIn1dfQ.8dhtCpBLJXMqE2BCRXS2ljZMyabulWsE6SXaZujCupI/image;s=1280x1024;q=80?width=1920",
+        "https://ireland.apollo.olxcdn.com/v1/files/eyJmbiI6Ing4emd1bms4MHBnYzEtQVBUIiwidyI6W3siZm4iOiI2OW5scGE3ZWNxbTcxLUFQVCIsInMiOiIxNCIsInAiOiIxMCwtMTAiLCJhIjoiMCJ9XX0.LMI6BeT8_IzP2A41S5QtGvZO-pW5GPrnjOfOe3RF0ow/image;s=1280x1024;q=80?width=1920"
+      ],
+      "advertiser": {
+        "name": "",
+        "total_ads": "",
+        "is_agency": false,
+        "url": ""
+      },
+      "signals": {
+        "watermark": false,
+        "duplicate": false,
+        "professional_photos": false,
+        "agency_keywords": []
+      },
+      "_fingerprint": "6b14087801568076e751fd31cbce55c8",
+      "_status": "NEW",
+      "_first_seen": "2026-02-19T16:08:40.677Z",
+      "_last_seen": "2026-02-19T16:08:40.677Z",
+      "_changed_fields": [],
+      "_fsbo_score": 80,
+      "_fsbo_reasons": [
+        "Anunciante não tem histórico de múltiplos anúncios",
+        "Fotos não parecem profissionais",
+        "Telefone não disponível",
+        "2 fotos (típico de FSBO)",
+        "Anunciante confirmado como particular"
+      ]
+    }
+  ],
+  "count": 3,
+  "meta": {
+    "total_results": 3,
+    "duplicates_removed": 0,
+    "incremental": {
+      "scope_key": "imovirtual|https://www.imovirtual.com/pt/resultados/comprar/moradia/viana-do-castelo",
+      "state_file": "/Users/isacsa/fsbo-scraper/data/incremental_state.json",
+      "timestamp": "2026-02-19T16:08:40.677Z",
+      "new": 3,
+      "updated": 0,
+      "unchanged": 0,
+      "removed": 0,
+      "removed_keys": []
+    }
+  }
+}
