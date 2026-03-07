@@ -57,5 +57,7 @@ require('./run-scraper.test');
 // Pipeline tests
 require('./pipeline-score.test');
 require('./pipeline-dedupe.test');
+require('./precision-gate.test');
+require('./test-idealista-lobstr');
 
 

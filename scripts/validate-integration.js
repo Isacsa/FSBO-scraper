@@ -2,6 +2,7 @@
 
 /**
  * Dry-run validation script: scrape → clean → build payload → validate
+ * Uses strict waiting for long-running providers like Idealista/Lobstr.
  * Does NOT push to the APP. Outputs the payload to stdout for inspection.
  *
  * Usage:
@@ -14,6 +15,7 @@
  *   --platform=<name>   Portal to scrape (required)
  *   --url=<url>         Listing URL to scrape (required)
  *   --max-ads=<n>       Max ads to scrape (default: 5)
+ *   --max-wait=<ms>     Max wait for long-running providers like Idealista/Lobstr
  *   --raw               Also output raw scraper data for comparison
  */
 
@@ -22,6 +24,7 @@ require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 const crypto = require('crypto');
 const { runPlatform } = require('../src/core/runPlatform');
 const { buildIngestPayload } = require('../src/integration/toIngestPayload');
+const { applyPrecisionGate } = require('../src/integration/precisionGate');
 const { dedupeListInMemory } = require('../pipeline/deduplicate');
 
 const args = process.argv.slice(2);
@@ -34,6 +37,7 @@ function getArg(name) {
 const PLATFORM = getArg('platform');
 const URL = getArg('url');
 const MAX_ADS = parseInt(getArg('max-ads') || '5', 10);
+const MAX_WAIT = parseInt(getArg('max-wait') || '600000', 10);
 const SHOW_RAW = args.includes('--raw');
 
 function log(msg) {
@@ -53,7 +57,13 @@ async function main() {
   const { results } = await runPlatform({
     platform: PLATFORM,
     url: URL,
-    options: { maxPages: 2, maxAds: MAX_ADS, headless: true },
+    options: {
+      maxPages: 2,
+      maxAds: MAX_ADS,
+      maxWait: MAX_WAIT,
+      headless: true,
+      filterAgencies: true,
+    },
     outputShape: 'cli',
     normalize: true,
   });
@@ -76,15 +86,27 @@ async function main() {
   const { unique: deduped, duplicates } = dedupeListInMemory(results);
   log(`After dedupe: ${deduped.length} unique, ${duplicates?.length || 0} removed`);
 
+  const precision = applyPrecisionGate(deduped, PLATFORM);
+  log(
+    `After precision gate: ${precision.metrics.accepted_for_push} accepted, ` +
+    `${precision.metrics.rejected_precision} rejected, ${precision.metrics.uncertain_blocked} uncertain blocked`
+  );
+
+  if (precision.accepted.length === 0) {
+    log('No items passed the precision gate.');
+    process.exit(1);
+  }
+
   // Build payload
   const payload = buildIngestPayload({
     runId: crypto.randomUUID(),
     configId: '00000000-0000-0000-0000-000000000000',
     source: PLATFORM,
     areaQuery: 'validation-test',
-    rawItems: deduped,
+    rawItems: precision.accepted,
     durationMs,
     dedupeRemovedLocal: duplicates?.length || 0,
+    totalScraped: deduped.length,
   });
 
   log('─── INGEST PAYLOAD ───');

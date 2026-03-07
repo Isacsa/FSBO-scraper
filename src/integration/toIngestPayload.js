@@ -51,7 +51,7 @@ function toIngestItem(rawItem, source) {
     photos: Array.isArray(item.photos) ? item.photos.filter(p => typeof p === 'string' && p.length > 0) : [],
     features: Array.isArray(item.features) ? item.features.filter(f => typeof f === 'string' && f.length > 0) : [],
     fsbo_score: typeof item.fsbo_score === 'number' ? item.fsbo_score : null,
-    fingerprint: item.fingerprint || null,
+    fingerprint: item.fingerprint || item._fingerprint || null,
     signals: item.signals && typeof item.signals === 'object' ? item.signals : null,
   };
 }
@@ -67,9 +67,19 @@ function toIngestItem(rawItem, source) {
  * @param {Object[]} options.rawItems - raw scraper output items
  * @param {number} options.durationMs - scraping duration in ms
  * @param {number} [options.dedupeRemovedLocal] - items removed by local dedupe
+ * @param {number} [options.totalScraped] - original item count before precision gate
  * @returns {Object} full ingest payload for POST /api/scraper/ingest
  */
-function buildIngestPayload({ runId, configId, source, areaQuery, rawItems, durationMs, dedupeRemovedLocal = 0 }) {
+function buildIngestPayload({
+  runId,
+  configId,
+  source,
+  areaQuery,
+  rawItems,
+  durationMs,
+  dedupeRemovedLocal = 0,
+  totalScraped = rawItems.length,
+}) {
   const items = rawItems.map(item => toIngestItem(item, source));
 
   return {
@@ -81,7 +91,7 @@ function buildIngestPayload({ runId, configId, source, areaQuery, rawItems, dura
     duration_ms: durationMs,
     items,
     meta: {
-      total_scraped: rawItems.length,
+      total_scraped: totalScraped,
       dedupe_removed_local: dedupeRemovedLocal,
       scraper_version: require('../../package.json').version,
     },

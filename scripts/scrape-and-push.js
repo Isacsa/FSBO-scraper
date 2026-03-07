@@ -21,6 +21,7 @@ const crypto = require('crypto');
 const { pullConfigs } = require('../src/integration/pullConfigs');
 const { buildIngestPayload } = require('../src/integration/toIngestPayload');
 const { pushBatch } = require('../src/integration/pushBatch');
+const { applyPrecisionGate } = require('../src/integration/precisionGate');
 const { runPlatform } = require('../src/core/runPlatform');
 const { dedupeListInMemory } = require('../pipeline/deduplicate');
 
@@ -69,6 +70,7 @@ async function scrapeSource(platform, url, options) {
       options: {
         maxPages: options?.maxPages || 5,
         maxAds: options?.maxAds || 30,
+        maxWait: options?.maxWait || null,
         headless: true,
         filterAgencies: options?.filterAgencies !== false,
       },
@@ -129,13 +131,33 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }) {
     const { unique: deduped, duplicates } = dedupeListInMemory(items);
     const dedupeRemoved = duplicates ? duplicates.length : 0;
 
+    const precision = applyPrecisionGate(deduped, platform);
+
     log('info', `Scraped ${items.length} items (${dedupeRemoved} dupes removed) from ${platform}`, {
       configId,
       platform,
-      total: items.length,
+      scraped: items.length,
       deduped: deduped.length,
+      rejected_precision: precision.metrics.rejected_precision,
+      uncertain_blocked: precision.metrics.uncertain_blocked,
+      accepted_for_push: precision.metrics.accepted_for_push,
       durationMs,
     });
+
+    if (precision.accepted.length === 0) {
+      log('warn', `Precision gate blocked all items from ${platform}`, {
+        configId,
+        platform,
+        rejected_precision: precision.metrics.rejected_precision,
+        uncertain_blocked: precision.metrics.uncertain_blocked,
+      });
+      runResults.errors.push({
+        source: platform,
+        error_type: 'precision_gate_blocked',
+        message: 'No items passed the precision gate',
+      });
+      continue;
+    }
 
     // Build payload (applies dataCleaner + type conversion internally)
     const payload = buildIngestPayload({
@@ -143,9 +165,10 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }) {
       configId,
       source: platform,
       areaQuery: config.area_label,
-      rawItems: deduped,
+      rawItems: precision.accepted,
       durationMs,
       dedupeRemovedLocal: dedupeRemoved,
+      totalScraped: deduped.length,
     });
 
     if (DRY_RUN) {
