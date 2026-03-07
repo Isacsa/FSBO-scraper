@@ -46,6 +46,11 @@ function normalizeBoolean(value) {
   return false;
 }
 
+function normalizeNullableBoolean(value) {
+  if (value === null || value === undefined || value === '') return null;
+  return normalizeBoolean(value);
+}
+
 /**
  * Normaliza array: sempre array, nunca null
  */
@@ -115,7 +120,7 @@ function normalizeAdvertiser(advertiser) {
     return {
       name: '',
       total_ads: '',
-      is_agency: false,
+      is_agency: null,
       url: ''
     };
   }
@@ -123,7 +128,7 @@ function normalizeAdvertiser(advertiser) {
   return {
     name: normalizeString(advertiser.name),
     total_ads: normalizeNumber(advertiser.total_ads), // String normalizada ou ""
-    is_agency: normalizeBoolean(advertiser.is_agency), // Sempre boolean
+    is_agency: normalizeNullableBoolean(advertiser.is_agency),
     url: normalizeString(advertiser.url)
   };
 }
@@ -152,11 +157,22 @@ function normalizeSignals(signals) {
     .filter(k => k !== '');
   const uniqueKeywords = [...new Set(agencyKeywords)];
   
-  return {
+  const normalizedBase = {
     watermark: normalizeBoolean(cleaned.watermark),
     duplicate: normalizeBoolean(cleaned.duplicate),
     professional_photos: normalizeBoolean(cleaned.professional_photos),
     agency_keywords: uniqueKeywords
+  };
+
+  const extras = {};
+  for (const [key, value] of Object.entries(cleaned)) {
+    if (Object.prototype.hasOwnProperty.call(normalizedBase, key)) continue;
+    extras[key] = value;
+  }
+
+  return {
+    ...normalizedBase,
+    ...extras,
   };
 }
 
@@ -184,7 +200,9 @@ function normalizeFinalObject(data) {
     features: normalizeArray(data.features).map(f => normalizeString(f)),
     photos: normalizeArray(data.photos).map(p => normalizeString(p)),
     advertiser: normalizeAdvertiser(data.advertiser),
-    signals: normalizeSignals(data.signals)
+    signals: normalizeSignals(data.signals),
+    fsbo_score: typeof data.fsbo_score === 'number' ? Math.round(data.fsbo_score) : null,
+    fingerprint: normalizeString(data.fingerprint),
   };
   
   // Remover qualquer campo extra que não esteja no schema
@@ -199,6 +217,14 @@ function normalizeFinalObject(data) {
     if (normalized.hasOwnProperty(key)) {
       final[key] = normalized[key];
     }
+  }
+
+  if (normalized.fsbo_score !== null) {
+    final.fsbo_score = normalized.fsbo_score;
+  }
+
+  if (normalized.fingerprint) {
+    final.fingerprint = normalized.fingerprint;
   }
   
   // Garantir que signals não tem is_agency (deve estar apenas em advertiser)
@@ -225,6 +251,7 @@ function validateSchema(data) {
     'days_online', 'title', 'description', 'location', 'price', 'property',
     'features', 'photos', 'advertiser', 'signals'
   ];
+  const optionalTopLevelKeys = ['fsbo_score', 'fingerprint'];
   
   for (const key of topLevelKeys) {
     if (!data.hasOwnProperty(key)) {
@@ -280,8 +307,8 @@ function validateSchema(data) {
         errors.push(`advertiser.${key} ausente`);
       }
     }
-    if (typeof data.advertiser.is_agency !== 'boolean') {
-      errors.push('advertiser.is_agency deve ser boolean');
+    if (data.advertiser.is_agency !== null && typeof data.advertiser.is_agency !== 'boolean') {
+      errors.push('advertiser.is_agency deve ser boolean ou null');
     }
   }
   
@@ -312,7 +339,7 @@ function validateSchema(data) {
   }
   
   // Verificar que não há campos extra
-  const allowedKeys = new Set(topLevelKeys);
+  const allowedKeys = new Set([...topLevelKeys, ...optionalTopLevelKeys]);
   for (const key in data) {
     if (!allowedKeys.has(key)) {
       errors.push(`Campo extra não permitido: ${key}`);
@@ -331,6 +358,7 @@ module.exports = {
   normalizeString,
   normalizeNumber,
   normalizeBoolean,
+  normalizeNullableBoolean,
   normalizeArray
 };
 

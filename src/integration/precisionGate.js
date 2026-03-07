@@ -123,8 +123,10 @@ function isPlaceholderAdvertiserName(name) {
 }
 
 function hasPositiveFsboEvidence(item) {
-  if (item?.fsbo_decision === 'fsbo') return true;
+  const fsboDecision = item?.fsbo_decision || item?.signals?.fsbo_decision || null;
+  if (fsboDecision === 'fsbo') return true;
   if (typeof item?.fsbo_score === 'number' && item.fsbo_score >= 60) return true;
+  if (typeof item?.signals?.fsbo_score === 'number' && item.signals.fsbo_score >= 60) return true;
   if (item?.advertiser?.is_agency === false && !isPlaceholderAdvertiserName(item?.advertiser?.name)) {
     return true;
   }
@@ -134,6 +136,7 @@ function hasPositiveFsboEvidence(item) {
 
 function classifyPrecisionDecision(item, source) {
   const reasons = [];
+  const fsboDecision = item?.fsbo_decision || item?.signals?.fsbo_decision || null;
 
   if (!hasValidCanonicalUrl(item, source)) {
     reasons.push('invalid_canonical_url');
@@ -155,12 +158,12 @@ function classifyPrecisionDecision(item, source) {
     return { decision: 'reject', reasons };
   }
 
-  if (item?.fsbo_decision === 'agency' || item?.advertiser?.is_agency === true) {
+  if (fsboDecision === 'agency' || item?.advertiser?.is_agency === true) {
     reasons.push('agency_signal');
     return { decision: 'reject', reasons };
   }
 
-  if (item?.fsbo_decision === 'uncertain') {
+  if (fsboDecision === 'uncertain') {
     reasons.push('uncertain_fsbo_decision');
     return { decision: 'uncertain', reasons };
   }

@@ -156,6 +156,8 @@ async function scrapeOLX(url, options = {}) {
     }, PLATFORM);
     
     finalJson.signals = signals;
+    finalJson.fsbo_score = signals.fsbo_score;
+    finalJson.fsbo_decision = signals.fsbo_decision;
     
     // Atualizar is_agency no advertiser com base nos sinais (se ainda não foi definido)
     if (finalJson.advertiser.is_agency === null || finalJson.advertiser.is_agency === undefined) {

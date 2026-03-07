@@ -5,6 +5,7 @@
 const { normalizeLocation } = require('../../utils/locationNormalizer');
 const { parseAdData } = require('./custojusto.parse');
 const { parseCustoJustoDate } = require('./dateParser');
+const { analyzeFsboSignals } = require('../../services/fsboSignals');
 
 /**
  * Normaliza um anúncio para formato JSON final
@@ -175,6 +176,18 @@ async function normalizeAd(parsed, options = {}) {
   }
   
   // Montar objeto final
+  const signals = analyzeFsboSignals({
+    title: parsed.title,
+    description: parsed.description,
+    photos: parsed.photos,
+    advertiser: {
+      name: advertiserName,
+      is_agency: advertiserIsAgency,
+      phone: parsed.phone || null,
+    },
+    phone: parsed.phone || null,
+  }, 'custojusto');
+
   const normalized = {
     source: 'custojusto',
     ad_id: parsed.ad_id || null,
@@ -214,17 +227,13 @@ async function normalizeAd(parsed, options = {}) {
     advertiser: {
       name: advertiserName,
       total_ads: null,
-      is_agency: advertiserIsAgency,
+      is_agency: advertiserIsAgency ?? signals.is_agency,
       url: null,
       phone: parsed.phone || null
     },
-    signals: {
-      watermark: false,
-      duplicate: false,
-      professional_photos: false,
-      agency_keywords: [],
-      is_fsbo: advertiserIsAgency === true ? false : null
-    }
+    fsbo_score: signals.fsbo_score,
+    fsbo_decision: signals.fsbo_decision,
+    signals
   };
   
   return normalized;

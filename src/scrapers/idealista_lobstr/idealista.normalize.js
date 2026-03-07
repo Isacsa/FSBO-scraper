@@ -1,6 +1,7 @@
 /**
  * Normaliza dados brutos do Lobstr para o formato JSON final FSBO_LITE
- * Segue o schema exato especificado: apenas campos que o Lobstr fornece
+ * Segue o schema exato especificado, usando campos diretos do Lobstr
+ * e campos derivados produzidos pelo parse step.
  */
 
 /**
@@ -53,8 +54,8 @@ function normalizeListing(result) {
     photos.push(result.main_image);
   }
   
-  // Converter tipologia de bedrooms
-  const tipology = bedroomsToTipology(result.bedrooms);
+  // Converter tipologia de bedrooms se o parse ainda não a tiver inferido
+  const tipology = result.tipology || bedroomsToTipology(result.bedrooms);
   
   // Normalizar preço para string
   let price = null;
@@ -101,7 +102,7 @@ function normalizeListing(result) {
     },
     price: price,
     property: {
-      type: null, // Lobstr não fornece
+      type: result.property_type || null,
       tipology: tipology,
       area_total: area_total,
       area_useful: area_useful,
@@ -113,15 +114,26 @@ function normalizeListing(result) {
     advertiser: {
       name: null, // Lobstr não fornece
       total_ads: null, // Lobstr não fornece
-      is_agency: null, // Lobstr não fornece
+      is_agency: result.fsbo_decision === 'agency'
+        ? true
+        : result.fsbo_decision === 'fsbo'
+          ? false
+          : null,
       url: null, // Lobstr não fornece
       phone: result.phone || null // Lobstr fornece phone
     },
+    fsbo_score: typeof result.fsbo_score_signal === 'number' ? result.fsbo_score_signal : null,
+    fsbo_decision: result.fsbo_decision || null,
     signals: {
       watermark: false,
       duplicate: false,
-      professional_photos: false,
-      agency_keywords: []
+      professional_photos: Boolean(result.professional_photos),
+      agency_keywords: Array.isArray(result.agency_keywords) ? result.agency_keywords : [],
+      fsbo_decision: result.fsbo_decision || null,
+      fsbo_score: typeof result.fsbo_score_signal === 'number' ? result.fsbo_score_signal : null,
+      agency_score: typeof result.agency_score === 'number' ? result.agency_score : null,
+      phone_signal: result.phone_signal || null,
+      evidence: result.evidence || null,
     }
   };
   

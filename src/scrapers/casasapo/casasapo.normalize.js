@@ -236,7 +236,8 @@ async function normalizeAd(parsed, options = {}) {
     advertiser: {
       name: advertiserName,
       is_agency: isAgency
-    }
+    },
+    phone: parsed.phone || null,
   });
   
   // Montar objeto final
@@ -294,14 +295,13 @@ async function normalizeAd(parsed, options = {}) {
     advertiser: {
       name: advertiserName,
       total_ads: null,
-      is_agency: isAgency,
+      is_agency: isAgency ?? signals.is_agency,
       url: null,
       phone: parsed.phone || null
     },
-    signals: {
-      ...signals,
-      is_fsbo: isAgency === true ? false : null
-    }
+    fsbo_score: signals.fsbo_score,
+    fsbo_decision: signals.fsbo_decision,
+    signals
   };
   
   return normalized;

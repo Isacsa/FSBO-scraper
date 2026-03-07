@@ -239,6 +239,7 @@ function coerceStringsToNative(item) {
 
   // Prices use Portuguese format (dots as thousand separators)
   result.price = (() => { const n = parsePriceNum(result.price); return n === null ? null : Math.round(n); })();
+  result.fsbo_score = (() => { const n = parseNum(result.fsbo_score); return n === null ? null : Math.round(n); })();
   result.days_online = parseInt_(result.days_online);
 
   // Location

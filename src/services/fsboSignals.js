@@ -105,6 +105,24 @@ const PROFESSIONAL_PATTERNS = [
   /agencia\s+imobiliaria/i
 ];
 
+const OWNER_DIRECT_PATTERNS = [
+  /\bparticular\b/i,
+  /\bpropriet[aá]ri[oa]\b/i,
+  /\bdono\b/i,
+  /\bsem intermedi[aá]rios\b/i,
+  /\bneg[oó]cio direto\b/i,
+  /\bcontacto direto\b/i,
+];
+
+const ANTI_AGENCY_PATTERNS = [
+  /\bsem imobili[aá]rias?\b/i,
+  /\bsem ag[eê]ncias?\b/i,
+  /\bdispenso imobili[aá]rias?\b/i,
+  /\bdispenso ag[eê]ncias?\b/i,
+  /\bn[aã]o quero imobili[aá]rias?\b/i,
+  /\bn[aã]o pretendo media[cç][aã]o\b/i,
+];
+
 /**
  * Cache de fingerprints para detecção de duplicados
  */
@@ -433,6 +451,39 @@ function detectDuplicate(data) {
   }
 }
 
+function clampScore(value) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function normalizePhoneNumber(phone) {
+  if (!phone || typeof phone !== 'string') return null;
+  const digits = phone.replace(/[^\d+]/g, '');
+  if (digits.startsWith('+351')) return digits;
+  if (digits.startsWith('351')) return `+${digits}`;
+  if (/^9\d{8}$/.test(digits)) return `+351${digits}`;
+  return digits || null;
+}
+
+function analyzePhoneHeuristic(phone) {
+  const normalized = normalizePhoneNumber(phone);
+  if (!normalized) {
+    return { phone_signal: null, score_delta: 0 };
+  }
+
+  const local = normalized.replace(/^\+351/, '');
+  if (/^96\d{7}$/.test(local)) {
+    return { phone_signal: 'mobile_prefix_96', score_delta: 12 };
+  }
+  if (/^9\d{8}$/.test(local)) {
+    return { phone_signal: 'mobile_prefix_9', score_delta: 8 };
+  }
+  if (/^(2|3)\d{8}$/.test(local)) {
+    return { phone_signal: 'landline_prefix', score_delta: -6 };
+  }
+
+  return { phone_signal: 'unknown', score_delta: 0 };
+}
+
 /**
  * Função principal de análise de sinais FSBO
  * @param {Object} data - Dados do anúncio
@@ -441,55 +492,168 @@ function detectDuplicate(data) {
  */
 function analyzeFsboSignals(data, platform = 'olx') {
   console.log('[FSBOSignals] 🔍 Analisando sinais FSBO...');
-  
+
   const title = data.title || '';
   const description = data.description || '';
   const photos = data.photos || [];
   const advertiser = data.advertiser || {};
-  
+  const allText = `${title} ${description} ${advertiser.name || ''}`.trim();
+  const positiveEvidence = [];
+  const negativeEvidence = [];
+
   // Detectar palavras-chave de agência (sem contexto negativo)
-  const allText = `${title} ${description} ${advertiser.name || ''}`;
   const agencyKeywords = detectAgencyKeywords(allText);
-  
+
   // Detectar watermark
   const watermark = detectWatermark(photos);
-  
+
   // Detectar fotos profissionais
   const professionalPhotos = detectProfessionalPhotos(photos, description);
-  
+
   // Detectar duplicado
   const duplicate = detectDuplicate({
     title,
     price: data.price,
     location: data.location
   });
-  
-  // Detectar se é agência (usando score)
-  const isAgency = detectIsAgency({
+
+  // Reaproveitar score base de agência e convertê-lo numa escala FSBO simples.
+  const agencyScore = calculateAgencyScore({
     title,
     description,
     advertiser,
     photos
   });
-  
+
+  let fsboScore = 50 - (agencyScore * 12);
+
+  const ownerDirectHits = OWNER_DIRECT_PATTERNS.filter((pattern) => pattern.test(allText));
+  if (ownerDirectHits.length > 0) {
+    positiveEvidence.push('owner_direct_phrase');
+    fsboScore += 18;
+  }
+
+  const antiAgencyHits = ANTI_AGENCY_PATTERNS.filter((pattern) => pattern.test(allText));
+  if (antiAgencyHits.length > 0) {
+    positiveEvidence.push('anti_agency_phrase');
+    fsboScore += 20;
+  }
+
+  if (typeof advertiser.is_agency === 'boolean') {
+    if (advertiser.is_agency) {
+      negativeEvidence.push('advertiser_marked_agency');
+      fsboScore -= 35;
+    } else {
+      positiveEvidence.push('advertiser_marked_private');
+      fsboScore += 10;
+    }
+  }
+
+  if (agencyKeywords.length > 0) {
+    negativeEvidence.push('agency_keywords');
+    fsboScore -= 22;
+  }
+
+  const hasProfessionalPattern = PROFESSIONAL_PATTERNS.some((pattern) => pattern.test(description));
+  if (hasProfessionalPattern) {
+    negativeEvidence.push('professional_pattern');
+    fsboScore -= 14;
+  }
+
+  if (watermark) {
+    negativeEvidence.push('watermark');
+    fsboScore -= 10;
+  }
+
+  if (professionalPhotos) {
+    negativeEvidence.push('professional_photos');
+    fsboScore -= 8;
+  }
+
+  if (duplicate) {
+    negativeEvidence.push('duplicate');
+    fsboScore -= 6;
+  }
+
+  const totalAds = advertiser.total_ads != null ? parseInt(advertiser.total_ads, 10) : null;
+  if (!Number.isNaN(totalAds) && totalAds !== null) {
+    if (totalAds >= 20) {
+      negativeEvidence.push('many_ads');
+      fsboScore -= 18;
+    } else if (totalAds >= 5) {
+      negativeEvidence.push('several_ads');
+      fsboScore -= 8;
+    } else if (totalAds <= 2) {
+      positiveEvidence.push('few_ads');
+      fsboScore += 8;
+    }
+  }
+
+  const phoneHeuristic = analyzePhoneHeuristic(advertiser.phone || data.phone || null);
+  if (phoneHeuristic.phone_signal) {
+    if (phoneHeuristic.score_delta > 0) {
+      positiveEvidence.push(phoneHeuristic.phone_signal);
+    } else if (phoneHeuristic.score_delta < 0) {
+      negativeEvidence.push(phoneHeuristic.phone_signal);
+    }
+    fsboScore += phoneHeuristic.score_delta;
+  }
+
+  if (typeof data.fsbo_score === 'number') {
+    fsboScore = Math.round((fsboScore + data.fsbo_score) / 2);
+  }
+
+  if (data.fsbo_decision === 'fsbo') {
+    positiveEvidence.push('portal_fsbo_decision');
+    fsboScore += 15;
+  } else if (data.fsbo_decision === 'agency') {
+    negativeEvidence.push('portal_agency_decision');
+    fsboScore -= 25;
+  } else if (data.fsbo_decision === 'uncertain') {
+    negativeEvidence.push('portal_uncertain_decision');
+    fsboScore -= 8;
+  }
+
+  fsboScore = clampScore(fsboScore);
+
+  let fsboDecision = 'uncertain';
+  if (advertiser.is_agency === true || fsboScore <= 35) {
+    fsboDecision = 'agency';
+  } else if (fsboScore >= 70) {
+    fsboDecision = 'fsbo';
+  }
+
+  const isAgency = fsboDecision === 'agency'
+    ? true
+    : fsboDecision === 'fsbo'
+      ? false
+      : null;
+
   console.log('[FSBOSignals] ✅ Análise concluída:');
   console.log(`  - watermark: ${watermark}`);
   console.log(`  - duplicate: ${duplicate}`);
   console.log(`  - professional_photos: ${professionalPhotos}`);
   console.log(`  - agency_keywords: ${agencyKeywords.length} encontrados`);
-  console.log(`  - is_agency: ${isAgency}`);
-  
+  console.log(`  - fsbo_score: ${fsboScore}`);
+  console.log(`  - fsbo_decision: ${fsboDecision}`);
+
   return {
     watermark,
     duplicate,
     professional_photos: professionalPhotos,
     agency_keywords: agencyKeywords,
-    is_agency: isAgency
+    is_agency: isAgency,
+    fsbo_score: fsboScore,
+    fsbo_decision: fsboDecision,
+    phone_signal: phoneHeuristic.phone_signal,
+    positive_evidence: [...new Set(positiveEvidence)],
+    negative_evidence: [...new Set(negativeEvidence)],
   };
 }
 
 module.exports = {
   analyzeFsboSignals,
+  analyzePhoneHeuristic,
   detectAgencyKeywords,
   detectIsAgency,
   detectWatermark,
