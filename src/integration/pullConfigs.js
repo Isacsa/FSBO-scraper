@@ -15,10 +15,10 @@ const axios = require('axios');
  * @param {number} [options.timeout=10000]
  * @returns {Promise<Object[]>} array of config objects
  */
-async function pullConfigs({ apiUrl, apiKey, tenantId, timeout = 10000 }) {
+async function pullConfigs({ apiUrl, apiKey, tenantId, timeout = 10000, httpClient = axios }) {
   const url = `${apiUrl.replace(/\/+$/, '')}/api/scraper/configs`;
 
-  const response = await axios.get(url, {
+  const response = await httpClient.get(url, {
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'X-Tenant-Id': tenantId,

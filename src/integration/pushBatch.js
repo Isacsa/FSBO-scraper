@@ -29,7 +29,16 @@ const REQUEST_TIMEOUT_MS = 30000;
  * @returns {Promise<Object>} API response data
  * @throws {Error} after all retries exhausted
  */
-async function pushBatch(payload, { apiUrl, apiKey, tenantId, maxRetries = DEFAULT_RETRIES, logger = console.error }) {
+async function pushBatch(payload, {
+  apiUrl,
+  apiKey,
+  tenantId,
+  maxRetries = DEFAULT_RETRIES,
+  logger = console.error,
+  httpClient = axios,
+  sleepFn = sleep,
+  requestTimeoutMs = REQUEST_TIMEOUT_MS,
+}) {
   const url = `${apiUrl.replace(/\/+$/, '')}/api/scraper/ingest`;
   const headers = {
     'Content-Type': 'application/json',
@@ -42,9 +51,9 @@ async function pushBatch(payload, { apiUrl, apiKey, tenantId, maxRetries = DEFAU
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const response = await axios.post(url, payload, {
+      const response = await httpClient.post(url, payload, {
         headers,
-        timeout: REQUEST_TIMEOUT_MS,
+        timeout: requestTimeoutMs,
         maxContentLength: 10 * 1024 * 1024,
         validateStatus: () => true,
       });
@@ -66,7 +75,7 @@ async function pushBatch(payload, { apiUrl, apiKey, tenantId, maxRetries = DEFAU
       if (status === 429) {
         const retryAfter = parseInt(response.headers['retry-after'] || '30', 10);
         logger(`[pushBatch] Rate limited (429). Waiting ${retryAfter}s before retry.`);
-        await sleep(retryAfter * 1000);
+        await sleepFn(retryAfter * 1000);
         continue;
       }
 
@@ -98,7 +107,7 @@ async function pushBatch(payload, { apiUrl, apiKey, tenantId, maxRetries = DEFAU
     // Backoff before next attempt
     if (attempt < maxRetries) {
       const delay = BACKOFF_BASE_MS * Math.pow(BACKOFF_MULTIPLIER, attempt - 1);
-      await sleep(delay);
+      await sleepFn(delay);
     }
   }
 

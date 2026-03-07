@@ -25,46 +25,61 @@ const { applyPrecisionGate } = require('../src/integration/precisionGate');
 const { runPlatform } = require('../src/core/runPlatform');
 const { dedupeListInMemory } = require('../pipeline/deduplicate');
 
-// ─── CLI args ───
+const defaultDeps = {
+  pullConfigs,
+  buildIngestPayload,
+  pushBatch,
+  applyPrecisionGate,
+  runPlatform,
+  dedupeListInMemory,
+  randomUUID: () => crypto.randomUUID(),
+};
 
-const args = process.argv.slice(2);
-const RUN_NOW = args.includes('--run-now');
-const DRY_RUN = args.includes('--dry-run');
-const CONFIG_ID = (() => {
-  const flag = args.find(a => a.startsWith('--config-id='));
-  return flag ? flag.split('=')[1] : null;
-})();
-
-// ─── Environment ───
-
-const APP_API_URL = process.env.APP_API_URL;
-const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY;
-const SCRAPER_TENANT_ID = process.env.SCRAPER_TENANT_ID;
-
-function log(level, msg, data = {}) {
-  const entry = {
-    level,
-    timestamp: new Date().toISOString(),
-    message: msg,
-    ...data,
+function parseCliArgs(argv = process.argv.slice(2)) {
+  return {
+    runNow: argv.includes('--run-now'),
+    dryRun: argv.includes('--dry-run'),
+    configId: (() => {
+      const flag = argv.find(a => a.startsWith('--config-id='));
+      return flag ? flag.split('=').slice(1).join('=') : null;
+    })(),
   };
-  process.stderr.write(JSON.stringify(entry) + '\n');
 }
 
-function shouldRunConfig(config) {
-  if (RUN_NOW) return true;
+function getConnectionOptions(env = process.env) {
+  return {
+    apiUrl: env.APP_API_URL,
+    apiKey: env.SCRAPER_API_KEY,
+    tenantId: env.SCRAPER_TENANT_ID,
+  };
+}
+
+function createLogger(stderr = process.stderr) {
+  return function log(level, msg, data = {}) {
+    const entry = {
+      level,
+      timestamp: new Date().toISOString(),
+      message: msg,
+      ...data,
+    };
+    stderr.write(JSON.stringify(entry) + '\n');
+  };
+}
+
+function shouldRunConfig(config, { runNow = false, now = Date.now() } = {}) {
+  if (runNow) return true;
   if (!config.last_run_at) return true;
 
   const lastRun = new Date(config.last_run_at);
   const threshold = (config.schedule_interval_hours || 96) * 60 * 60 * 1000;
-  const elapsed = Date.now() - lastRun.getTime();
+  const elapsed = now - lastRun.getTime();
   return elapsed >= threshold;
 }
 
-async function scrapeSource(platform, url, options) {
+async function scrapeSource(platform, url, options, deps = defaultDeps) {
   const startMs = Date.now();
   try {
-    const { results } = await runPlatform({
+    const { results } = await deps.runPlatform({
       platform,
       url,
       options: {
@@ -86,7 +101,13 @@ async function scrapeSource(platform, url, options) {
   }
 }
 
-async function processConfig(config, { apiUrl, apiKey, tenantId }) {
+async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {}) {
+  const {
+    deps = defaultDeps,
+    flags = { dryRun: false },
+    log = createLogger(),
+    stdout = process.stdout,
+  } = runtime;
   const configId = config.id;
   const sources = config.sources || {};
   const options = config.options || {};
@@ -109,11 +130,11 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }) {
     if (!url || typeof url !== 'string') continue;
 
     runResults.sourcesAttempted++;
-    const runId = crypto.randomUUID();
+    const runId = deps.randomUUID();
 
     log('info', `Scraping ${platform}`, { configId, platform, url });
 
-    const { items, durationMs, error } = await scrapeSource(platform, url, options);
+    const { items, durationMs, error } = await scrapeSource(platform, url, options, deps);
 
     if (error) {
       log('error', `Scraper failed for ${platform}`, { configId, platform, error });
@@ -128,10 +149,10 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }) {
     }
 
     // In-memory dedupe within this batch
-    const { unique: deduped, duplicates } = dedupeListInMemory(items);
+    const { unique: deduped, duplicates } = deps.dedupeListInMemory(items);
     const dedupeRemoved = duplicates ? duplicates.length : 0;
 
-    const precision = applyPrecisionGate(deduped, platform);
+    const precision = deps.applyPrecisionGate(deduped, platform);
 
     log('info', `Scraped ${items.length} items (${dedupeRemoved} dupes removed) from ${platform}`, {
       configId,
@@ -160,7 +181,7 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }) {
     }
 
     // Build payload (applies dataCleaner + type conversion internally)
-    const payload = buildIngestPayload({
+    const payload = deps.buildIngestPayload({
       runId,
       configId,
       source: platform,
@@ -171,14 +192,14 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }) {
       totalScraped: deduped.length,
     });
 
-    if (DRY_RUN) {
+    if (flags.dryRun) {
       log('info', `[DRY RUN] Would push ${payload.items.length} items for ${platform}`, {
         configId,
         platform,
         runId,
       });
       // Output payload to stdout for inspection
-      process.stdout.write(JSON.stringify(payload, null, 2) + '\n');
+      stdout.write(JSON.stringify(payload, null, 2) + '\n');
       runResults.sourcesSucceeded++;
       runResults.totalItems += payload.items.length;
       continue;
@@ -186,7 +207,7 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }) {
 
     // Push to APP Fastify API
     try {
-      const result = await pushBatch(payload, {
+      const result = await deps.pushBatch(payload, {
         apiUrl,
         apiKey,
         tenantId,
@@ -220,55 +241,68 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }) {
   return runResults;
 }
 
-async function main() {
-  // Validate environment
-  if (!APP_API_URL) {
-    log('error', 'APP_API_URL environment variable is required');
-    process.exit(1);
-  }
-  if (!SCRAPER_API_KEY) {
-    log('error', 'SCRAPER_API_KEY environment variable is required');
-    process.exit(1);
-  }
-  if (!SCRAPER_TENANT_ID) {
-    log('error', 'SCRAPER_TENANT_ID environment variable is required');
-    process.exit(1);
-  }
+async function main(runtime = {}) {
+  const argv = runtime.argv || process.argv.slice(2);
+  const env = runtime.env || process.env;
+  const deps = { ...defaultDeps, ...(runtime.deps || {}) };
+  const stdout = runtime.stdout || process.stdout;
+  const stderr = runtime.stderr || process.stderr;
+  const exit = runtime.exit || ((code) => process.exit(code));
+  const now = typeof runtime.now === 'number' ? runtime.now : Date.now();
+  const flags = parseCliArgs(argv);
+  const connOpts = getConnectionOptions(env);
+  const log = createLogger(stderr);
 
-  const connOpts = {
-    apiUrl: APP_API_URL,
-    apiKey: SCRAPER_API_KEY,
-    tenantId: SCRAPER_TENANT_ID,
-  };
+  // Validate environment
+  if (!connOpts.apiUrl) {
+    log('error', 'APP_API_URL environment variable is required');
+    exit(1);
+    return { exitCode: 1 };
+  }
+  if (!connOpts.apiKey) {
+    log('error', 'SCRAPER_API_KEY environment variable is required');
+    exit(1);
+    return { exitCode: 1 };
+  }
+  if (!connOpts.tenantId) {
+    log('error', 'SCRAPER_TENANT_ID environment variable is required');
+    exit(1);
+    return { exitCode: 1 };
+  }
 
   log('info', 'Scrape-and-push starting', {
-    runNow: RUN_NOW,
-    dryRun: DRY_RUN,
-    configId: CONFIG_ID,
-    apiUrl: APP_API_URL,
+    runNow: flags.runNow,
+    dryRun: flags.dryRun,
+    configId: flags.configId,
+    apiUrl: connOpts.apiUrl,
   });
 
   // Pull configs from APP
   let configs;
   try {
-    configs = await pullConfigs(connOpts);
+    configs = await deps.pullConfigs(connOpts);
     log('info', `Fetched ${configs.length} configs from APP`);
   } catch (err) {
     log('error', `Failed to pull configs: ${err.message}`);
-    process.exit(1);
+    exit(1);
+    return { exitCode: 1 };
   }
 
   // Filter by config ID if specified
-  if (CONFIG_ID) {
-    configs = configs.filter(c => c.id === CONFIG_ID);
+  if (flags.configId) {
+    configs = configs.filter(c => c.id === flags.configId);
     if (configs.length === 0) {
-      log('error', `Config ${CONFIG_ID} not found`);
-      process.exit(1);
+      log('error', `Config ${flags.configId} not found`);
+      exit(1);
+      return { exitCode: 1 };
     }
   }
 
   // Filter by scheduling threshold
-  const toRun = configs.filter(shouldRunConfig);
+  const toRun = configs.filter(config => shouldRunConfig(config, {
+    runNow: flags.runNow,
+    now,
+  }));
   const skipped = configs.length - toRun.length;
 
   if (skipped > 0) {
@@ -277,14 +311,29 @@ async function main() {
 
   if (toRun.length === 0) {
     log('info', 'No configs to run. Exiting.');
-    return;
+    return {
+      exitCode: 0,
+      summary: {
+        configsProcessed: 0,
+        configsSkipped: skipped,
+        sourcesAttempted: 0,
+        sourcesSucceeded: 0,
+        totalItems: 0,
+        totalErrors: 0,
+      },
+    };
   }
 
   // Process each config sequentially
   const allResults = [];
   for (const config of toRun) {
     try {
-      const result = await processConfig(config, connOpts);
+      const result = await processConfig(config, connOpts, {
+        deps,
+        flags,
+        log,
+        stdout,
+      });
       allResults.push(result);
     } catch (err) {
       log('error', `Config ${config.id} failed unexpectedly`, {
@@ -303,28 +352,42 @@ async function main() {
   }
 
   // Summary
-  const totalSources = allResults.reduce((s, r) => s + r.sourcesAttempted, 0);
-  const totalSucceeded = allResults.reduce((s, r) => s + r.sourcesSucceeded, 0);
-  const totalItems = allResults.reduce((s, r) => s + r.totalItems, 0);
-  const totalErrors = allResults.reduce((s, r) => s + r.errors.length, 0);
+  const summary = {
+    configsProcessed: toRun.length,
+    configsSkipped: skipped,
+    sourcesAttempted: allResults.reduce((s, r) => s + r.sourcesAttempted, 0),
+    sourcesSucceeded: allResults.reduce((s, r) => s + r.sourcesSucceeded, 0),
+    totalItems: allResults.reduce((s, r) => s + r.totalItems, 0),
+    totalErrors: allResults.reduce((s, r) => s + r.errors.length, 0),
+  };
 
   log('info', 'Scrape-and-push complete', {
     event: 'scrape_push_complete',
-    configsProcessed: toRun.length,
-    configsSkipped: skipped,
-    sourcesAttempted: totalSources,
-    sourcesSucceeded: totalSucceeded,
-    totalItems,
-    totalErrors,
-    dryRun: DRY_RUN,
+    ...summary,
+    dryRun: flags.dryRun,
   });
 
-  if (totalErrors > 0) {
-    process.exit(2); // Partial failure
+  if (summary.totalErrors > 0) {
+    exit(2);
+    return { exitCode: 2, summary, results: allResults };
   }
+
+  return { exitCode: 0, summary, results: allResults };
 }
 
-main().catch(err => {
-  log('error', `Fatal error: ${err.message}`, { stack: err.stack });
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(err => {
+    const log = createLogger(process.stderr);
+    log('error', `Fatal error: ${err.message}`, { stack: err.stack });
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  createLogger,
+  parseCliArgs,
+  shouldRunConfig,
+  scrapeSource,
+  processConfig,
+  main,
+};

@@ -53,6 +53,8 @@ console.log('\n✅ Tests completed!');
 
 // CLI / run-scraper tests
 require('./run-scraper.test');
+require('./scraper-http-flow.test');
+require('./scrape-and-push.test');
 
 // Pipeline tests
 require('./pipeline-score.test');
