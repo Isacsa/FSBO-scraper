@@ -54,6 +54,92 @@ function ensurePrivateFilter(url) {
   }
 }
 
+function normalizeOlxListingUrl(rawHref) {
+  if (!rawHref || typeof rawHref !== 'string') return null;
+
+  try {
+    let fullUrl = rawHref;
+    if (rawHref.startsWith('/')) {
+      fullUrl = `https://www.olx.pt${rawHref}`;
+    } else if (!rawHref.startsWith('http')) {
+      fullUrl = `https://www.olx.pt/${rawHref}`;
+    }
+
+    const url = new URL(fullUrl);
+    if (!(url.hostname === 'www.olx.pt' || url.hostname.endsWith('.olx.pt'))) {
+      return null;
+    }
+
+    const cleanPath = url.pathname.replace(/\/+$/, '');
+    const isCanonicalAd =
+      cleanPath.includes('/d/anuncio/') ||
+      cleanPath.includes('/anuncio/') ||
+      cleanPath.includes('/ad/');
+    if (!isCanonicalAd) {
+      return null;
+    }
+
+    url.search = '';
+    url.hash = '';
+    url.pathname = cleanPath;
+    return url.toString();
+  } catch (error) {
+    return null;
+  }
+}
+
+function looksLikeRealEstateCard(cardText) {
+  if (!cardText || typeof cardText !== 'string') return true;
+
+  const text = cardText.toLowerCase();
+  const positiveHints = [
+    'apartamento',
+    'moradia',
+    'casa',
+    'terreno',
+    'quinta',
+    'vivenda',
+    'duplex',
+    't0',
+    't1',
+    't2',
+    't3',
+    't4',
+    't5',
+    'imóvel',
+    'imovel',
+    'm2',
+  ];
+  const negativeHints = [
+    'automóvel',
+    'automovel',
+    'bmw',
+    'mercedes',
+    'audi',
+    'peugeot',
+    'renault',
+    'carro',
+    'mota',
+    'motociclo',
+    'cv',
+    'kms',
+    ' km ',
+    'iphone',
+    'samsung',
+    'playstation',
+    'ps5',
+    'xbox',
+    'emprego',
+    'serviço',
+    'servico',
+  ];
+
+  const hasPositiveHint = positiveHints.some((hint) => text.includes(hint));
+  const hasNegativeHint = negativeHints.some((hint) => text.includes(hint));
+
+  return hasPositiveHint || !hasNegativeHint;
+}
+
 /**
  * Extrai URLs de anúncios de uma página de listagem
  */
@@ -63,8 +149,8 @@ async function extractListingUrls(page) {
   // Aguardar JavaScript carregar
   await page.waitForTimeout(2000);
   
-  const urls = await page.evaluate(() => {
-    const urlSet = new Set();
+  const candidates = await page.evaluate(() => {
+    const entries = [];
     
     // Método 1: Procurar links de anúncios no HTML
     // Seletores comuns do OLX para anúncios
@@ -84,40 +170,13 @@ async function extractListingUrls(page) {
       links.forEach(link => {
         const href = link.getAttribute('href');
         if (href) {
-          // Construir URL completo
-          let fullUrl = href;
-          if (href.startsWith('/')) {
-            fullUrl = `https://www.olx.pt${href}`;
-          } else if (!href.startsWith('http')) {
-            fullUrl = `https://www.olx.pt/${href}`;
-          }
-          
-          // Limpar parâmetros extras
-          const cleanUrl = fullUrl.split('?')[0].split('#')[0];
-          
-          // Verificar se é URL de anúncio válido
-          if (cleanUrl.includes('/ad/') || cleanUrl.includes('/anuncio/')) {
-            urlSet.add(cleanUrl);
-          }
+          const cardText = link.closest('article, [data-cy="l-card"], [data-testid="ad-card"]')?.textContent || '';
+          entries.push({ href, cardText });
         }
       });
     }
-    
-    // Método 2: Procurar por IDs de anúncios no HTML/data attributes
-    const adElements = document.querySelectorAll('[data-id], [data-ad-id], [id*="ad-"]');
-    adElements.forEach(el => {
-      const adId = el.getAttribute('data-id') || 
-                   el.getAttribute('data-ad-id') || 
-                   el.id?.replace('ad-', '');
-      
-      if (adId && /^\d+$/.test(adId)) {
-        // Construir URL do anúncio
-        const adUrl = `https://www.olx.pt/ad/i${adId}`;
-        urlSet.add(adUrl);
-      }
-    });
-    
-    // Método 3: Procurar em scripts JSON-LD ou dados inline
+
+    // Método 2: Procurar em scripts JSON-LD ou dados inline
     const scripts = document.querySelectorAll('script[type="application/json"], script[type="application/ld+json"]');
     scripts.forEach(script => {
       try {
@@ -128,10 +187,7 @@ async function extractListingUrls(page) {
         const urlMatches = dataStr.match(/https?:\/\/[^"'\s]*olx\.pt[^"'\s]*\/ad[^"'\s]*/g);
         if (urlMatches) {
           urlMatches.forEach(url => {
-            const cleanUrl = url.split('?')[0].split('#')[0];
-            if (cleanUrl.includes('/ad/')) {
-              urlSet.add(cleanUrl);
-            }
+            entries.push({ href: url, cardText: '' });
           });
         }
       } catch (e) {
@@ -139,8 +195,17 @@ async function extractListingUrls(page) {
       }
     });
     
-    return Array.from(urlSet);
+    return entries;
   });
+
+  const urlSet = new Set();
+  candidates.forEach(({ href, cardText }) => {
+    const normalized = normalizeOlxListingUrl(href);
+    if (!normalized) return;
+    if (!looksLikeRealEstateCard(cardText)) return;
+    urlSet.add(normalized);
+  });
+  const urls = Array.from(urlSet);
   
   console.log(`[OLX Listings] ✅ Encontrados ${urls.length} anúncios nesta página`);
   return urls;
@@ -276,6 +341,8 @@ async function extractAllListingUrls(listingUrl, options = {}) {
 
 module.exports = {
   extractAllListingUrls,
-  extractListingUrls
+  extractListingUrls,
+  normalizeOlxListingUrl,
+  looksLikeRealEstateCard,
 };
 

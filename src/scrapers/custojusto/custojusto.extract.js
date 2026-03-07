@@ -834,6 +834,44 @@ async function extractAdDetails(adUrl, options = {}) {
           }
         }
       }
+
+      // Bloco do anunciante/contacto - preservar o que a página mostrar, sem assumir particular
+      data.advertiser = { name: null, label: null };
+      const advertiserBlocks = document.querySelectorAll(
+        '[class*="advertiser"], [class*="seller"], [class*="contact"], [class*="profile"], [class*="user"]'
+      );
+      for (const block of advertiserBlocks) {
+        const text = block.textContent?.replace(/\s+/g, ' ').trim() || '';
+        if (!text || text.length > 160) continue;
+        const lower = text.toLowerCase();
+        if (
+          lower.includes('ver número') ||
+          lower.includes('contactar') ||
+          lower.includes('mensagem') ||
+          lower.includes('partilhar')
+        ) {
+          continue;
+        }
+
+        if (lower.includes('profissional') || lower.includes('empresa') || lower.includes('particular')) {
+          data.advertiser.label = text;
+        }
+
+        if (!data.advertiser.name) {
+          const lines = text
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean);
+          const candidate = lines.find((line) => line.length >= 3 && line.length <= 80);
+          if (candidate) {
+            data.advertiser.name = candidate;
+          }
+        }
+
+        if (data.advertiser.name || data.advertiser.label) {
+          break;
+        }
+      }
       
       // Fotos - filtrar tiles do mapa
       data.photos = [];

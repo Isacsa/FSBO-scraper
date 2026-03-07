@@ -11,6 +11,15 @@ const { parseCustoJustoDate } = require('./dateParser');
  */
 async function normalizeAd(parsed, options = {}) {
   const now = new Date().toISOString();
+  const advertiserLabel = parsed.advertiser?.label || null;
+  const advertiserName =
+    parsed.advertiser?.name && !/^(particular|contactar|anunciante)$/i.test(parsed.advertiser.name)
+      ? parsed.advertiser.name
+      : null;
+  const advertiserIsAgency =
+    typeof advertiserLabel === 'string' && /(profissional|empresa|imobili[aá]ria|ag[eê]ncia)/i.test(advertiserLabel)
+      ? true
+      : null;
   
   // Normalizar localização
   let location = {
@@ -203,9 +212,9 @@ async function normalizeAd(parsed, options = {}) {
     }),
     photos: parsed.photos,
     advertiser: {
-      name: 'Particular',
+      name: advertiserName,
       total_ads: null,
-      is_agency: false,
+      is_agency: advertiserIsAgency,
       url: null,
       phone: parsed.phone || null
     },
@@ -214,7 +223,7 @@ async function normalizeAd(parsed, options = {}) {
       duplicate: false,
       professional_photos: false,
       agency_keywords: [],
-      is_fsbo: true
+      is_fsbo: advertiserIsAgency === true ? false : null
     }
   };
   

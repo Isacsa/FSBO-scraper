@@ -6,7 +6,7 @@ const { createBrowser, createPage, navigateWithRetry, randomDelay, slowScroll, c
 
 /**
  * Extrai URLs de anúncios da página de listagem
- * Retorna apenas URLs de anúncios SEM telefone visível (potenciais FSBO)
+ * Retorna apenas URLs de anúncios SEM telefone visível (candidatos a FSBO)
  */
 async function extractListingUrls(page) {
   await randomDelay(2000, 3000);
@@ -17,7 +17,7 @@ async function extractListingUrls(page) {
     await randomDelay(1000, 2000);
   }
   
-  // Extrair URLs de anúncios SEM botão "Ver Telefone" (potenciais FSBO)
+  // Extrair URLs de anúncios sem botão "Ver Telefone" (candidatos a FSBO, não prova final)
   const result = await page.evaluate(() => {
     const urlSet = new Set();
     const debug = {
@@ -104,7 +104,7 @@ async function extractListingUrls(page) {
         debug.withPhone++;
       } else {
         debug.withoutPhone++;
-        // Se NÃO tem classe "property-phone", é FSBO (queremos extrair)
+        // Sem telefone visível continua candidato e será validado depois
         const fullUrl = href.startsWith('http') ? href : `https://casa.sapo.pt${href}`;
         urlSet.add(fullUrl);
       }
@@ -133,7 +133,7 @@ async function extractListingUrls(page) {
   
   const urls = result.urls;
   
-  console.log(`[CasaSapo Extract] ✅ Encontrados ${urls.length} anúncios sem telefone nesta página`);
+  console.log(`[CasaSapo Extract] ✅ Encontrados ${urls.length} anúncios candidatos sem telefone nesta página`);
   
   return urls;
 }
@@ -554,7 +554,11 @@ async function extractAdDetails(adUrl, options = {}) {
         if (adv && adv.textContent) {
           const name = adv.textContent.trim();
           // Limpar texto comum
-          if (!name.includes('Veja todos') && !name.includes('Anunciante')) {
+          if (
+            !name.includes('Veja todos') &&
+            !name.includes('Anunciante') &&
+            !/^(email|sms|email\s+sms)$/i.test(name)
+          ) {
             data.advertiser.name = name;
             break;
           }

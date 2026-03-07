@@ -5,6 +5,26 @@
 
 const crypto = require('crypto');
 
+function canonicalizeAdUrl(url) {
+  if (!url || typeof url !== 'string') return '';
+
+  try {
+    const parsed = new URL(url);
+    parsed.hash = '';
+    parsed.search = '';
+    parsed.hostname = parsed.hostname.toLowerCase();
+    parsed.pathname = parsed.pathname.replace(/\/+$/, '');
+
+    if (parsed.hostname.endsWith('imovirtual.com')) {
+      parsed.pathname = parsed.pathname.replace(/\/hpr\//g, '/');
+    }
+
+    return parsed.toString();
+  } catch (error) {
+    return String(url).trim();
+  }
+}
+
 /**
  * Cria fingerprint de um anúncio
  * Baseado em: url, ad_id, telefone, preço + tipologia + área + localização
@@ -14,7 +34,7 @@ function fingerprint(ad) {
   
   // URL (mais confiável)
   if (ad.url) {
-    parts.push(`url:${ad.url}`);
+    parts.push(`url:${canonicalizeAdUrl(ad.url)}`);
   }
   
   // ad_id + source (único por plataforma)
@@ -99,6 +119,7 @@ function dedupeListInMemory(items) {
 }
 
 module.exports = {
+  canonicalizeAdUrl,
   fingerprint,
   isDuplicateInMemory,
   dedupeListInMemory

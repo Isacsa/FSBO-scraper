@@ -58,6 +58,7 @@ require('./run-scraper.test');
 require('./pipeline-score.test');
 require('./pipeline-dedupe.test');
 require('./precision-gate.test');
+require('./portal-safe-fixes.test');
 require('./test-idealista-lobstr');
 
 

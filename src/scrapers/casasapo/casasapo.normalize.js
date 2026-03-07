@@ -73,6 +73,10 @@ function parseCasaSapoDate(dateStr) {
  */
 async function normalizeAd(parsed, options = {}) {
   const now = new Date().toISOString();
+  const advertiserName =
+    parsed.advertiser_name && !/^(email|sms|email\s+sms|contactar|anunciante)$/i.test(parsed.advertiser_name)
+      ? parsed.advertiser_name
+      : null;
   
   // Normalizar localização
   let location = {
@@ -220,8 +224,9 @@ async function normalizeAd(parsed, options = {}) {
   }
   
   // Detectar se é agência
-  const isAgency = parsed.advertiser_name ? 
-    /(ami|consultor|gestor|imobiliária|imobiliaria|properties|real\s+estate)/i.test(parsed.advertiser_name) : false;
+  const isAgency = advertiserName
+    ? /(ami|consultor|gestor|imobiliária|imobiliaria|properties|real\s+estate)/i.test(advertiserName)
+    : null;
   
   // FSBO Signals
   const signals = analyzeFsboSignals({
@@ -229,7 +234,7 @@ async function normalizeAd(parsed, options = {}) {
     description: parsed.description,
     photos: parsed.photos,
     advertiser: {
-      name: parsed.advertiser_name,
+      name: advertiserName,
       is_agency: isAgency
     }
   });
@@ -287,7 +292,7 @@ async function normalizeAd(parsed, options = {}) {
     }),
     photos: parsed.photos,
     advertiser: {
-      name: parsed.advertiser_name || 'Particular',
+      name: advertiserName,
       total_ads: null,
       is_agency: isAgency,
       url: null,
@@ -295,7 +300,7 @@ async function normalizeAd(parsed, options = {}) {
     },
     signals: {
       ...signals,
-      is_fsbo: !isAgency && signals.is_fsbo !== false
+      is_fsbo: isAgency === true ? false : null
     }
   };
   

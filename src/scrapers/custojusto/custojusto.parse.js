@@ -19,6 +19,12 @@ function parseAdData(rawData) {
     photos: rawData.photos || [],
     features: rawData.features || [],
     phone: normalizePhone(rawData.phone),
+    advertiser: rawData.advertiser
+      ? {
+          name: rawData.advertiser.name ? cleanText(rawData.advertiser.name) : null,
+          label: rawData.advertiser.label ? cleanText(rawData.advertiser.label) : null,
+        }
+      : null,
     specifications: rawData.specifications || {},
     // Preservar dados de data para normalização
     listTime: rawData.listTime || null,

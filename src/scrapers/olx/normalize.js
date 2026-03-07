@@ -108,7 +108,10 @@ async function normalizeToFinalFormat(parsed, url, platform) {
     advertiser: {
       name: parsed.advertiser.name || null,
       total_ads: parsed.advertiser.total_ads || null,
-      is_agency: parsed.advertiser.is_agency || false,
+      is_agency:
+        typeof parsed.advertiser.is_agency === 'boolean'
+          ? parsed.advertiser.is_agency
+          : null,
       url: parsed.advertiser.url || null
     },
     signals: {
