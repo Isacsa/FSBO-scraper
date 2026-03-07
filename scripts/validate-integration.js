@@ -17,10 +17,12 @@
  *   --raw               Also output raw scraper data for comparison
  */
 
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 const crypto = require('crypto');
 const { runPlatform } = require('../src/core/runPlatform');
 const { buildIngestPayload } = require('../src/integration/toIngestPayload');
-const { deduplicate } = require('../pipeline/deduplicate');
+const { dedupeListInMemory } = require('../pipeline/deduplicate');
 
 const args = process.argv.slice(2);
 
@@ -71,7 +73,7 @@ async function main() {
   }
 
   // Dedupe
-  const { unique: deduped, duplicates } = deduplicate(results);
+  const { unique: deduped, duplicates } = dedupeListInMemory(results);
   log(`After dedupe: ${deduped.length} unique, ${duplicates?.length || 0} removed`);
 
   // Build payload

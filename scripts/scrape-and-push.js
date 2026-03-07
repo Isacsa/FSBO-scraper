@@ -15,12 +15,14 @@
  *   SCRAPER_TENANT_ID - tenant UUID (required)
  */
 
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 const crypto = require('crypto');
 const { pullConfigs } = require('../src/integration/pullConfigs');
 const { buildIngestPayload } = require('../src/integration/toIngestPayload');
 const { pushBatch } = require('../src/integration/pushBatch');
 const { runPlatform } = require('../src/core/runPlatform');
-const { deduplicate } = require('../pipeline/deduplicate');
+const { dedupeListInMemory } = require('../pipeline/deduplicate');
 
 // ─── CLI args ───
 
@@ -124,7 +126,7 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }) {
     }
 
     // In-memory dedupe within this batch
-    const { unique: deduped, duplicates } = deduplicate(items);
+    const { unique: deduped, duplicates } = dedupeListInMemory(items);
     const dedupeRemoved = duplicates ? duplicates.length : 0;
 
     log('info', `Scraped ${items.length} items (${dedupeRemoved} dupes removed) from ${platform}`, {
