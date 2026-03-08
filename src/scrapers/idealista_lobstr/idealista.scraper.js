@@ -1,13 +1,38 @@
 /**
  * Scraper principal do Idealista via Lobstr
- * Entry-point que integra extract → normalize
+ * Entry-point que integra extract → parse → filter → normalize
  * Retorna formato: { success: true, total_results: <INT>, items: [...] }
  */
 
 const { extractIdealistaListings } = require('./idealista.extract');
+const { parseLobstrResults } = require('./idealista.parse');
 const { normalizeListings } = require('./idealista.normalize');
 
 const PLATFORM = 'idealista_lobstr';
+
+function filterAgencyListings(parsedResults) {
+  const fsboListings = [];
+  const agencyListings = [];
+  const uncertainListings = [];
+
+  for (const item of parsedResults) {
+    if (!item) continue;
+
+    if (item.fsbo_decision === 'agency') {
+      agencyListings.push(item);
+    } else if (item.fsbo_decision === 'fsbo') {
+      fsboListings.push(item);
+    } else {
+      uncertainListings.push(item);
+    }
+  }
+
+  return {
+    fsboListings,
+    agencyListings,
+    uncertainListings
+  };
+}
 
 /**
  * Scraper do Idealista via Lobstr API
@@ -19,6 +44,9 @@ const PLATFORM = 'idealista_lobstr';
  */
 async function scrapeIdealistaLobstr(searchUrl = null, options = {}) {
   const startTime = Date.now();
+  const {
+    filterAgencies = true
+  } = options;
   
   console.log(`[${PLATFORM.toUpperCase()}] 🚀 Iniciando scrape via Lobstr...`);
   if (searchUrl) {
@@ -42,20 +70,46 @@ async function scrapeIdealistaLobstr(searchUrl = null, options = {}) {
     }
     
     console.log(`[${PLATFORM.toUpperCase()}] ✅ Extração concluída: ${extracted.results.length} results brutos`);
-    
-    // 2. NORMALIZAR (montar JSON final FSBO_LITE)
-    console.log(`[${PLATFORM.toUpperCase()}] 📋 Fase 2: Normalização para formato FSBO_LITE`);
-    const normalized = normalizeListings(extracted.results);
+    // 2. PARSE (preencher campos derivados do Lobstr)
+    console.log(`[${PLATFORM.toUpperCase()}] 📋 Fase 2: Parsing e complementação dos resultados`);
+    const parsed = parseLobstrResults(extracted.results);
+
+    // 3. FILTRAR AGÊNCIAS / INCERTOS (opcional)
+    let parsedToNormalize = parsed;
+    let agenciesFiltered = 0;
+    let uncertainFiltered = 0;
+    if (filterAgencies) {
+      console.log(`[${PLATFORM.toUpperCase()}] 📋 Fase 3: Filtrando anúncios não-FSBO`);
+      const filtered = filterAgencyListings(parsed);
+      parsedToNormalize = filtered.fsboListings;
+      agenciesFiltered = filtered.agencyListings.length;
+      uncertainFiltered = filtered.uncertainListings.length;
+      console.log(
+        `[${PLATFORM.toUpperCase()}] ✅ ${agenciesFiltered} anúncios de agência e ` +
+        `${uncertainFiltered} anúncios incertos removidos`
+      );
+    } else {
+      console.log(`[${PLATFORM.toUpperCase()}] 📋 Fase 3: Filtro FSBO desativado`);
+    }
+
+    // 4. NORMALIZAR (montar JSON final FSBO_LITE)
+    console.log(`[${PLATFORM.toUpperCase()}] 📋 Fase 4: Normalização para formato FSBO_LITE`);
+    const normalized = normalizeListings(parsedToNormalize);
     
     const duration = Date.now() - startTime;
     console.log(`[${PLATFORM.toUpperCase()}] ✅ Scrape concluído:`);
-    console.log(`[${PLATFORM.toUpperCase()}]   - Total de results: ${normalized.length}`);
+    console.log(`[${PLATFORM.toUpperCase()}]   - Results recebidos: ${extracted.results.length}`);
+    console.log(`[${PLATFORM.toUpperCase()}]   - Agências filtradas: ${agenciesFiltered}`);
+    console.log(`[${PLATFORM.toUpperCase()}]   - Incertos filtrados: ${uncertainFiltered}`);
+    console.log(`[${PLATFORM.toUpperCase()}]   - Total de FSBO: ${normalized.length}`);
     console.log(`[${PLATFORM.toUpperCase()}]   - Duração: ${Math.round(duration/1000)}s (${duration}ms)`);
     
     // Retornar no formato especificado
     return {
       success: true,
       total_results: normalized.length,
+      agencies_filtered: agenciesFiltered,
+      uncertain_filtered: uncertainFiltered,
       items: normalized
     };
     

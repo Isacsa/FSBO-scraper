@@ -106,7 +106,10 @@ function buildScraperOptions(platform, opts) {
     return { onlyNew, maxPages, maxAds, headless };
   }
   if (platform === 'idealista') {
-    const out = { maxResults: maxAds || null };
+    const out = {
+      maxResults: maxAds || null,
+      filterAgencies
+    };
     if (maxWait) out.maxWait = maxWait;
     return out;
   }

@@ -1,123 +1,96 @@
 /**
- * Testes automáticos para scraper Idealista via Lobstr
+ * Testes determinísticos para a integração Idealista/Lobstr.
+ * Não dependem da rede nem do Lobstr ao correr em CI/local.
  */
 
-const scrapeIdealistaLobstr = require('../src/scrapers/idealista_lobstr/idealista.scraper');
+const assert = require('assert');
+const {
+  analyzePhoneSignal,
+  classifyIdealistaFsbo
+} = require('../src/scrapers/idealista_lobstr/idealista.parse');
+const {
+  findActiveIdealistaRun,
+  shouldUsePartialResults
+} = require('../src/scrapers/idealista_lobstr/idealista.extract');
 
-// URL de teste - pesquisa de casas em Lisboa
-const TEST_URL = 'https://www.idealista.pt/comprar-casas/lisboa/';
+console.log('\nIdealista Lobstr tests');
 
-async function runTests() {
-  console.log('🧪 TESTES AUTOMÁTICOS - IDEALISTA VIA LOBSTR\n');
-  console.log('='.repeat(80));
-  console.log(`URL de teste: ${TEST_URL}\n`);
-  
-  let testsPassed = 0;
-  let testsFailed = 0;
-  
+function runTest(name, fn) {
   try {
-    // Teste principal: criar task, criar run, pollear, obter results
-    console.log('📋 TESTE: Fluxo completo (task → run → poll → results)');
-    console.log('─'.repeat(80));
-    
-    const startTime = Date.now();
-    const result = await scrapeIdealistaLobstr(TEST_URL, {
-      maxResults: 10, // Limitar a 10 para teste rápido
-      maxWait: 600000 // 10 minutos
-    });
-    
-    const duration = Date.now() - startTime;
-    
-    console.log(`\n✅ Fluxo completo executado com sucesso!`);
-    console.log(`   Duração: ${Math.round(duration/1000)}s (${duration}ms)`);
-    console.log(`   Success: ${result.success}`);
-    console.log(`   Total results: ${result.total_results}`);
-    console.log(`   Items obtidos: ${result.items.length}\n`);
-    
-    // Validar estrutura de resposta
-    if (!result.success || result.total_results === undefined || !Array.isArray(result.items)) {
-      console.log('❌ FALHOU: Estrutura de resposta inválida');
-      console.log(`   Esperado: { success: true, total_results: <INT>, items: [...] }`);
-      console.log(`   Recebido:`, JSON.stringify(result, null, 2));
-      testsFailed++;
-    } else if (result.items.length === 0) {
-      console.log('❌ FALHOU: Nenhum listing obtido');
-      testsFailed++;
-    } else {
-      console.log('✅ PASSOU: Listings obtidos com sucesso');
-      testsPassed++;
-      
-      const listings = result.items;
-      
-      // Teste: validar estrutura JSON FSBO_LITE
-      console.log('📋 TESTE: Validar estrutura JSON FSBO_LITE');
-      console.log('─'.repeat(80));
-      
-      const sample = listings[0];
-      const requiredFields = [
-        'source', 'ad_id', 'url', 'published_date', 'updated_date',
-        'timestamp', 'days_online', 'title', 'description',
-        'location', 'price', 'property', 'photos',
-        'advertiser', 'signals'
-      ];
-      
-      const missingFields = requiredFields.filter(field => !sample.hasOwnProperty(field));
-      
-      if (missingFields.length === 0) {
-        console.log('✅ PASSOU: Todos os campos obrigatórios presentes');
-        testsPassed++;
-      } else {
-        console.log(`❌ FALHOU: Campos em falta: ${missingFields.join(', ')}`);
-        testsFailed++;
-      }
-      
-      // Teste: validar campos específicos FSBO_LITE
-      console.log('\n📋 TESTE: Validar campos específicos FSBO_LITE');
-      console.log('─'.repeat(80));
-      
-      const fieldChecks = {
-        'source === "idealista_lobstr"': sample.source === 'idealista_lobstr',
-        'url existe': sample.url && sample.url.length > 0,
-        'title existe': sample.title && sample.title.length > 0,
-        'location é objeto': typeof sample.location === 'object',
-        'property é objeto': typeof sample.property === 'object',
-        'advertiser é objeto': typeof sample.advertiser === 'object',
-        'signals é objeto': typeof sample.signals === 'object',
-        'photos é array': Array.isArray(sample.photos),
-        'advertiser.phone existe (pode ser null)': sample.advertiser && 'phone' in sample.advertiser
-      };
-      
-      Object.entries(fieldChecks).forEach(([check, passed]) => {
-        console.log(`${passed ? '✅' : '❌'} ${check}`);
-        if (passed) testsPassed++;
-        else testsFailed++;
-      });
-      
-      // Mostrar exemplo
-      console.log('\n📋 EXEMPLO DE LISTING FSBO_LITE:');
-      console.log('─'.repeat(80));
-      console.log(JSON.stringify(sample, null, 2));
-    }
-    
+    fn();
+    console.log(`  PASS ${name}`);
   } catch (error) {
-    console.error('\n❌ ERRO:', error.message);
-    if (error.stack) {
-      console.error('Stack:', error.stack.split('\n').slice(0, 5).join('\n'));
-    }
-    testsFailed++;
+    console.error(`  FAIL ${name}`);
+    throw error;
   }
-  
-  // Resumo
-  console.log('\n' + '='.repeat(80));
-  console.log('📊 RESUMO DOS TESTES');
-  console.log('='.repeat(80));
-  console.log(`✅ Passou: ${testsPassed}`);
-  console.log(`❌ Falhou: ${testsFailed}`);
-  console.log(`📈 Taxa de sucesso: ${testsPassed > 0 ? ((testsPassed / (testsPassed + testsFailed)) * 100).toFixed(1) : 0}%`);
-  console.log('='.repeat(80));
-  
-  process.exit(testsFailed > 0 ? 1 : 0);
 }
 
-runTests();
+runTest('phone rule treats 96 as strong FSBO signal', () => {
+  const signal = analyzePhoneSignal('+351 961 234 567');
+  assert.equal(signal.phone_signal, 'mobile_prefix_96');
+  assert.equal(signal.fsbo_points, 3);
+  assert.equal(signal.agency_points, 0);
+});
+
+runTest('phone rule treats landline as non-private leaning signal', () => {
+  const signal = analyzePhoneSignal('+351 258 123 456');
+  assert.equal(signal.phone_signal, 'landline_prefix');
+  assert.equal(signal.fsbo_points, 0);
+  assert.equal(signal.agency_points, 1);
+});
+
+runTest('hybrid classifier marks explicit private listing as fsbo', () => {
+  const result = classifyIdealistaFsbo({
+    title: 'Apartamento T2 em Ponte de Lima',
+    description: 'Venda particular. Sem imobiliárias. Contacto direto do proprietário.',
+    phone: '+351961234567',
+    mainImage: null
+  });
+
+  assert.equal(result.fsbo_decision, 'fsbo');
+  assert.equal(result.is_agency, false);
+});
+
+runTest('hybrid classifier marks strong agency evidence as agency', () => {
+  const result = classifyIdealistaFsbo({
+    title: 'Century 21 apartment in Lisbon',
+    description: 'Consultor imobiliário. AMI 1234. Real estate broker.',
+    phone: '+351961234567',
+    mainImage: 'https://example.com/image?width=2048'
+  });
+
+  assert.equal(result.fsbo_decision, 'agency');
+  assert.equal(result.is_agency, true);
+});
+
+runTest('hybrid classifier leaves weak evidence as uncertain', () => {
+  const result = classifyIdealistaFsbo({
+    title: 'T2 flat in city center',
+    description: 'Bright apartment with balcony and garage.',
+    phone: '+351258123456',
+    mainImage: null
+  });
+
+  assert.equal(result.fsbo_decision, 'uncertain');
+});
+
+runTest('active run guard finds running Lobstr job', () => {
+  const activeRun = findActiveIdealistaRun([
+    { id: 'done-1', status: 'completed' },
+    { id: 'run-2', status: 'running' }
+  ]);
+
+  assert.ok(activeRun);
+  assert.equal(activeRun.id, 'run-2');
+});
+
+runTest('strict mode never allows partial results', () => {
+  const shouldUsePartial = shouldUsePartialResults(new Error('Timeout: run did not finish'), false);
+  assert.equal(shouldUsePartial, false);
+});
+
+runTest('diagnostic mode may allow partial results after timeout', () => {
+  const shouldUsePartial = shouldUsePartialResults(new Error('Timeout: run did not finish'), true);
+  assert.equal(shouldUsePartial, true);
+});
 

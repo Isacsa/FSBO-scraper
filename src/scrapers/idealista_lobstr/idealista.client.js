@@ -5,17 +5,24 @@
 
 const axios = require('axios');
 
-const LOBSTR_API_KEY = process.env.LOBSTR_API_KEY || 'ff1aa7541d74751227f0038459e2c5c92168f15d';
 const LOBSTR_API_BASE = 'https://api.lobstr.io/v1';
 // UUID do squid - pode ser configurado via env
 const IDEALISTA_SQUID_ID = process.env.IDEALISTA_SQUID_ID || '88e4e353ecad4a219922c82a47eac740';
+
+function getRequiredLobstrApiKey() {
+  const apiKey = process.env.LOBSTR_API_KEY;
+  if (!apiKey) {
+    throw new Error('LOBSTR_API_KEY env var is required to use Lobstr integration (Idealista).');
+  }
+  return apiKey;
+}
 
 /**
  * Headers padrão para requisições
  */
 function getHeaders() {
   return {
-    'Authorization': `Token ${LOBSTR_API_KEY}`,
+    'Authorization': `Token ${getRequiredLobstrApiKey()}`,
     'Content-Type': 'application/json'
   };
 }
@@ -380,7 +387,7 @@ async function pollRunUntilComplete(runId, options = {}) {
     const elapsed = Date.now() - startTime;
     
     if (elapsed > maxWait) {
-      throw new Error(`Timeout: Run ${runId} não completou em 10 minutos`);
+      throw new Error(`Timeout: Run ${runId} não completou em ${Math.round(maxWait / 1000)} segundos`);
     }
     
     try {

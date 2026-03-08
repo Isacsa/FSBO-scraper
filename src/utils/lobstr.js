@@ -4,11 +4,17 @@
 
 const axios = require('axios');
 
-// API Key do Lobstr.io - pode ser definida via variável de ambiente
-// API Key do Lobstr.io - pode ser definida via variável de ambiente
-const LOBSTR_API_KEY = process.env.LOBSTR_API_KEY || 'ff1aa7541d74751227f0038459e2c5c92168f15d';
+// API Key do Lobstr.io - deve ser definida via variável de ambiente
 // Tentar diferentes bases de API
 const LOBSTR_API_BASE = process.env.LOBSTR_API_BASE || 'https://api.lobstr.io/v1';
+
+function getRequiredLobstrApiKey() {
+  const apiKey = process.env.LOBSTR_API_KEY;
+  if (!apiKey) {
+    throw new Error('LOBSTR_API_KEY env var is required to use Lobstr integration.');
+  }
+  return apiKey;
+}
 
 /**
  * Cria uma nova sessão no Lobstr.io
@@ -39,7 +45,7 @@ async function createLobstrSession(options = {}) {
         },
         {
           headers: {
-            'Authorization': `Bearer ${LOBSTR_API_KEY}`,
+            'Authorization': `Token ${getRequiredLobstrApiKey()}`,
             'Content-Type': 'application/json'
           },
           timeout: 30000
@@ -59,7 +65,7 @@ async function createLobstrSession(options = {}) {
                 os
               },
               headers: {
-                'Authorization': `Bearer ${LOBSTR_API_KEY}`
+                'Authorization': `Token ${getRequiredLobstrApiKey()}`
               },
               timeout: 30000
             }
@@ -77,7 +83,7 @@ async function createLobstrSession(options = {}) {
               },
               {
                 headers: {
-                  'Authorization': `Bearer ${LOBSTR_API_KEY}`,
+                  'Authorization': `Token ${getRequiredLobstrApiKey()}`,
                   'Content-Type': 'application/json'
                 },
                 timeout: 30000
@@ -122,7 +128,7 @@ async function closeLobstrSession(sessionId) {
       `${LOBSTR_API_BASE}/sessions/${sessionId}`,
       {
         headers: {
-          'Authorization': `Bearer ${LOBSTR_API_KEY}`
+          'Authorization': `Token ${getRequiredLobstrApiKey()}`
         },
         timeout: 10000
       }

@@ -9,7 +9,9 @@
     "test": "node tests/test.js",
     "test:headless": "node tests/browser-headless.test.js",
     "scrape-all": "node scripts/scrape-all.js",
-    "scrape-push": "node scripts/scrape-and-push.js"
+    "scrape-push": "node scripts/scrape-and-push.js",
+    "lobstr:squids": "node scripts/list-lobstr-squids.js",
+    "lobstr:test": "node scripts/test-lobstr-connection.js"
   },
   "keywords": [
     "scraper",
