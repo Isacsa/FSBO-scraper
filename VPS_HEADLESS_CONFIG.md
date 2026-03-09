@@ -57,7 +57,7 @@ O modo headless é determinado **exclusivamente** por:
 - ✅ `src/scrapers/casasapo/casasapo.scraper.js` - Default headless=true
 - ✅ `src/scrapers/casasapo/casasapo.extract.js` - Default headless=true
 - ✅ `src/scrapers/casasapo/casasapo.utils.js` - Usa `shouldRunHeadless()` e args corretos
-- ✅ `src/scrapers/idealista/index.js` - Default headless=true
+- ✅ `src/scrapers/idealista_lobstr/idealista.scraper.js` - Usa runtime headless consistente
 - ✅ `src/scrapers/olx/index.js` - Já usava createBrowser() centralizado
 - ✅ `src/scrapers/imovirtual/index.js` - Já usava createBrowser() centralizado
 

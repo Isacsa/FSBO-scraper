@@ -126,6 +126,58 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {})
     errors: [],
   };
 
+  async function publishRun({
+    platform,
+    runId,
+    durationMs,
+    rawItems,
+    totalScraped,
+    dedupeRemoved = 0,
+    runStatus = 'COMPLETED',
+    errors = [],
+  }) {
+    const payload = deps.buildIngestPayload({
+      runId,
+      configId,
+      source: platform,
+      areaQuery: config.area_label,
+      rawItems,
+      durationMs,
+      dedupeRemovedLocal: dedupeRemoved,
+      totalScraped,
+      runStatus,
+      errors,
+    });
+
+    if (flags.dryRun) {
+      log('info', `[DRY RUN] Would push ${payload.items.length} items for ${platform}`, {
+        configId,
+        platform,
+        runId,
+        runStatus,
+      });
+      stdout.write(JSON.stringify(payload, null, 2) + '\n');
+      return { payload, result: null };
+    }
+
+    const result = await deps.pushBatch(payload, {
+      apiUrl,
+      apiKey,
+      tenantId,
+      logger: (msg) => log('warn', msg),
+    });
+
+    log('info', `Pushed ${platform} run successfully`, {
+      configId,
+      platform,
+      runId,
+      runStatus,
+      ...result,
+    });
+
+    return { payload, result };
+  }
+
   for (const [platform, url] of Object.entries(sources)) {
     if (!url || typeof url !== 'string') continue;
 
@@ -138,13 +190,51 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {})
 
     if (error) {
       log('error', `Scraper failed for ${platform}`, { configId, platform, error });
-      runResults.errors.push({ source: platform, error_type: 'scrape_failed', message: error });
+      const runError = { source: platform, error_type: 'scrape_failed', message: error };
+      runResults.errors.push(runError);
+      try {
+        await publishRun({
+          platform,
+          runId,
+          durationMs,
+          rawItems: [],
+          totalScraped: 0,
+          runStatus: 'FAILED',
+          errors: [runError],
+        });
+      } catch (pushErr) {
+        log('error', `Failed to publish failed run for ${platform}`, {
+          configId,
+          platform,
+          runId,
+          error: pushErr.message || String(pushErr),
+        });
+      }
       continue;
     }
 
     if (items.length === 0) {
       log('warn', `No items scraped from ${platform}`, { configId, platform });
-      runResults.errors.push({ source: platform, error_type: 'no_items', message: 'No items returned' });
+      const runError = { source: platform, error_type: 'no_items', message: 'No items returned' };
+      runResults.errors.push(runError);
+      try {
+        await publishRun({
+          platform,
+          runId,
+          durationMs,
+          rawItems: [],
+          totalScraped: 0,
+          runStatus: 'PARTIAL',
+          errors: [runError],
+        });
+      } catch (pushErr) {
+        log('error', `Failed to publish partial run for ${platform}`, {
+          configId,
+          platform,
+          runId,
+          error: pushErr.message || String(pushErr),
+        });
+      }
       continue;
     }
 
@@ -172,53 +262,44 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {})
         rejected_precision: precision.metrics.rejected_precision,
         uncertain_blocked: precision.metrics.uncertain_blocked,
       });
-      runResults.errors.push({
+      const runError = {
         source: platform,
         error_type: 'precision_gate_blocked',
         message: 'No items passed the precision gate',
-      });
-      continue;
-    }
-
-    // Build payload (applies dataCleaner + type conversion internally)
-    const payload = deps.buildIngestPayload({
-      runId,
-      configId,
-      source: platform,
-      areaQuery: config.area_label,
-      rawItems: precision.accepted,
-      durationMs,
-      dedupeRemovedLocal: dedupeRemoved,
-      totalScraped: deduped.length,
-    });
-
-    if (flags.dryRun) {
-      log('info', `[DRY RUN] Would push ${payload.items.length} items for ${platform}`, {
-        configId,
-        platform,
-        runId,
-      });
-      // Output payload to stdout for inspection
-      stdout.write(JSON.stringify(payload, null, 2) + '\n');
-      runResults.sourcesSucceeded++;
-      runResults.totalItems += payload.items.length;
+      };
+      runResults.errors.push(runError);
+      try {
+        await publishRun({
+          platform,
+          runId,
+          durationMs,
+          rawItems: [],
+          totalScraped: deduped.length,
+          dedupeRemoved,
+          runStatus: 'PARTIAL',
+          errors: [runError],
+        });
+      } catch (pushErr) {
+        log('error', `Failed to publish gated run for ${platform}`, {
+          configId,
+          platform,
+          runId,
+          error: pushErr.message || String(pushErr),
+        });
+      }
       continue;
     }
 
     // Push to APP Fastify API
     try {
-      const result = await deps.pushBatch(payload, {
-        apiUrl,
-        apiKey,
-        tenantId,
-        logger: (msg) => log('warn', msg),
-      });
-
-      log('info', `Pushed ${platform} batch successfully`, {
-        configId,
+      const { payload } = await publishRun({
         platform,
         runId,
-        ...result,
+        durationMs,
+        rawItems: precision.accepted,
+        totalScraped: deduped.length,
+        dedupeRemoved,
+        runStatus: 'COMPLETED',
       });
 
       runResults.sourcesSucceeded++;

@@ -7,7 +7,8 @@ It covers:
 - database readiness on the app side;
 - scraper configuration availability;
 - dry-run verification before push;
-- real ingest validation with idempotency, price events, and inventory lifecycle;
+- real ingest validation with idempotency, full/partial/failed run semantics, price events, and inventory lifecycle;
+- alert generation and delivery queue validation on the app side;
 - API readback validation on the app side.
 
 ## Preconditions
@@ -201,28 +202,108 @@ Expected:
 - empty batch marks the listing as removed
 - final batch marks the listing as reappeared
 
-### C. Read back from the app
+### C. Safe partial / failed run semantics
+Purpose:
+- prove that partial or failed source runs do not trigger false removals
+- prove that the app persists the final run status as `PARTIAL` or `FAILED`
+
 From the scraper repo:
 
 ```bash
-node -e 'require("dotenv").config({ path: ".env" }); (async () => { const base = process.env.APP_API_URL.replace(/\/+$/, ""); const headers = { "X-Tenant-Id": process.env.SCRAPER_TENANT_ID }; const statsRes = await fetch(`${base}/api/v1/scraper-stats`, { headers }); const listRes = await fetch(`${base}/api/v1/scraper-listings?source=olx&limit=10`, { headers }); const stats = await statsRes.json(); const list = await listRes.json(); const smoke = (list.items || []).find((item) => item.externalId === "smoke-e2e-olx-1"); console.log(JSON.stringify({ statsStatus: statsRes.status, listStatus: listRes.status, stats, smoke }, null, 2)); })().catch((err) => { console.error(err); process.exit(1); });'
+node - <<'EOF'
+require('dotenv').config()
+const crypto = require('crypto')
+const { buildIngestPayload } = require('./src/integration/toIngestPayload')
+const { pushBatch } = require('./src/integration/pushBatch')
+
+const apiUrl = process.env.APP_API_URL
+const apiKey = process.env.SCRAPER_API_KEY
+const tenantId = process.env.SCRAPER_TENANT_ID
+
+async function send(payload) {
+  return pushBatch(payload, { apiUrl, apiKey, tenantId })
+}
+
+(async () => {
+  const base = {
+    configId: '00000000-0000-0000-0000-000000000101',
+    source: 'olx',
+    areaQuery: 'Viana do Castelo',
+    durationMs: 1,
+    rawItems: [],
+  }
+
+  console.log(await send(buildIngestPayload({
+    ...base,
+    runId: crypto.randomUUID(),
+    runStatus: 'PARTIAL',
+    errors: [{ source: 'olx', error_type: 'precision_gate_blocked', message: 'No items passed the precision gate' }],
+  })))
+
+  console.log(await send(buildIngestPayload({
+    ...base,
+    runId: crypto.randomUUID(),
+    runStatus: 'FAILED',
+    errors: [{ source: 'olx', error_type: 'scrape_failed', message: 'Synthetic timeout for validation' }],
+  })))
+})().catch((err) => {
+  console.error(err)
+  process.exit(1)
+})
+EOF
+```
+
+Expected:
+- both requests return `accepted: true`
+- the app stores `run_status=PARTIAL` and `run_status=FAILED`
+- neither request increments `items_removed`
+- previously active smoke listings remain active after these validation runs
+
+### D. Read back from the app
+From the scraper repo:
+
+```bash
+node -e 'require("dotenv").config({ path: ".env" }); (async () => { const base = process.env.APP_API_URL.replace(/\/+$/, ""); const headers = { "X-Tenant-Id": process.env.SCRAPER_TENANT_ID }; const statsRes = await fetch(`${base}/api/v1/scraper-stats`, { headers }); const listRes = await fetch(`${base}/api/v1/scraper-listings?source=olx&limit=10`, { headers }); const alertsRes = await fetch(`${base}/api/v1/scraper-alerts?limit=10`, { headers }); const recipientsRes = await fetch(`${base}/api/v1/scraper-alert-recipients`, { headers }); const stats = await statsRes.json(); const list = await listRes.json(); const alerts = await alertsRes.json(); const recipients = await recipientsRes.json(); const smoke = (list.items || []).find((item) => item.externalId === "smoke-e2e-olx-1"); console.log(JSON.stringify({ statsStatus: statsRes.status, listStatus: listRes.status, alertsStatus: alertsRes.status, recipientsStatus: recipientsRes.status, stats, smoke, alerts, recipients }, null, 2)); })().catch((err) => { console.error(err); process.exit(1); });'
 ```
 
 Expected:
 - `statsStatus=200`
 - `listStatus=200`
+- `alertsStatus=200`
+- `recipientsStatus=200`
 - the smoke listing is visible in `scraper-listings`
 - `scraper-stats` reflects active inventory and price change counts
+- `scraper-alerts` shows `NEW_FSBO_LISTING`, `PRICE_DROP`, `PRICE_INCREASE`, `LISTING_REMOVED`, and `LISTING_REAPPEARED` as they happen
+- at least one recipient exists, either explicitly configured or bootstrapped from `AgentConfig`
+
+### E. Worker delivery gate
+Purpose:
+- prove that generated deliveries can leave the API boundary and be processed by the worker
+
+From the app repo:
+
+```bash
+pnpm --filter @trovelai/worker build
+```
+
+Expected:
+- worker TypeScript build passes
+- `JOB_NAMES.PROCESS_SCRAPER_ALERT_DELIVERY` is compiled
+- outbound queue processor accepts the new job type without breaking `SEND_MESSAGE`
 
 ## Acceptance criteria
 - `GET /api/scraper/configs` returns the seeded config for the tenant
 - scraper dry-run starts successfully against the live app
 - low-confidence or invalid live scrape results are blocked by `precisionGate`
 - replaying the same `run_id` does not create duplicates
+- `PARTIAL` and `FAILED` runs do not create false removals
 - price drops create `PriceEvent.direction = DROP`
 - price increases create `PriceEvent.direction = INCREASE`
 - missing items in a batch mark listings as removed
 - reappearing items clear `removedAt` and increment `items_reappeared`
+- alert events are created for new listings and price changes
+- `GET /api/v1/scraper-alerts` returns alert state and delivery state
+- `GET /api/v1/scraper-alert-recipients` returns subscription/destination state
 - `GET /api/v1/scraper-listings` surfaces `fsboDecision`, evidence, price event, and removal state
 - `GET /api/v1/scraper-stats` surfaces totals and price movement counters
 

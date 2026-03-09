@@ -173,6 +173,11 @@ function classifyPrecisionDecision(item, source) {
     return { decision: 'uncertain', reasons };
   }
 
+  if (!hasPositiveFsboEvidence(item)) {
+    reasons.push('missing_positive_fsbo_evidence');
+    return { decision: 'uncertain', reasons };
+  }
+
   return { decision: 'accept', reasons };
 }
 

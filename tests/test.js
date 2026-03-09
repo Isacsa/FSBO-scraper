@@ -1,55 +1,21 @@
-/**
- * Testes básicos para o FSBO Scraper
- */
-
+const assert = require('assert');
 const { detectPlatform, extractPhone, cleanText } = require('../src/utils/selectors');
 
 console.log('🧪 Running FSBO Scraper tests...\n');
 
-// Teste 1: Detecção de plataforma
-console.log('Test 1: Platform detection');
-const testUrls = [
-  'https://fsbo.com/listing/123',
-  'https://www.forsalebyowner.com/property/456',
-  'https://example.com/unknown'
-];
+assert.equal(detectPlatform('https://www.olx.pt/d/anuncio/teste-ID123.html'), 'olx');
+assert.equal(detectPlatform('https://www.imovirtual.com/pt/anuncio/teste/'), 'imovirtual');
+assert.equal(detectPlatform('https://www.idealista.pt/imovel/123/'), 'idealista');
+assert.equal(detectPlatform('https://www.custojusto.pt/teste'), 'custojusto');
+assert.equal(detectPlatform('https://casa.sapo.pt/comprar-casa/teste'), 'casasapo');
+assert.equal(detectPlatform('https://example.com/unknown'), null);
 
-testUrls.forEach(url => {
-  const platform = detectPlatform(url);
-  console.log(`  ${url} -> ${platform || 'null'}`);
-});
+assert.equal(extractPhone('+351 912 345 678'), '+351912345678');
+assert.equal(extractPhone('No phone here'), null);
+assert.equal(cleanText('  Texto   com  espacos  '), 'Texto com espacos');
+assert.equal(cleanText(null), null);
 
-// Teste 2: Extração de telefone
-console.log('\nTest 2: Phone extraction');
-const phoneTests = [
-  '(123) 456-7890',
-  '123-456-7890',
-  '123.456.7890',
-  '+1 123 456 7890',
-  '1-123-456-7890',
-  'No phone here'
-];
-
-phoneTests.forEach(text => {
-  const phone = extractPhone(text);
-  console.log(`  "${text}" -> ${phone || 'null'}`);
-});
-
-// Teste 3: Limpeza de texto
-console.log('\nTest 3: Text cleaning');
-const textTests = [
-  '  Hello   World  ',
-  'Text\nwith\nnewlines',
-  null,
-  undefined
-];
-
-textTests.forEach(text => {
-  const cleaned = cleanText(text);
-  console.log(`  "${text}" -> "${cleaned || 'null'}"`);
-});
-
-console.log('\n✅ Tests completed!');
+console.log('✅ Core selector smoke tests passed');
 
 // CLI / run-scraper tests
 require('./run-scraper.test');

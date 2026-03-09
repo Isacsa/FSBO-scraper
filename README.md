@@ -1,223 +1,106 @@
 # FSBO Scraper
 
-Microserviço backend em Node.js com Playwright Stealth para extrair informações de anúncios FSBO (For Sale By Owner).
+Microserviço Node.js para extrair anúncios imobiliários com foco em FSBO e entregar lotes normalizados para a app.
 
-## 🚀 Características
+## Production path
+O caminho suportado para produção é:
 
-- ✅ Arquitetura modular e extensível
-- ✅ Playwright Stealth para evitar detecção
-- ✅ Extração de telefone, título, preço, localização e descrição
-- ✅ Retry automático e tratamento de erros
-- ✅ Pronto para deploy em Railway/Fly.io/Docker
+1. a app expõe `ScraperConfig`
+2. o scraper corre `scripts/scrape-and-push.js`
+3. cada fonte passa por `runPlatform` + dedupe local + `precisionGate`
+4. só anúncios aceites são enviados para `POST /api/scraper/ingest`
 
-## 📋 Pré-requisitos
+Os ficheiros centrais deste fluxo são:
+- `scripts/scrape-and-push.js`
+- `src/core/runPlatform.js`
+- `src/integration/precisionGate.js`
+- `src/integration/toIngestPayload.js`
+- `src/integration/pushBatch.js`
 
-- Node.js 18+ 
-- npm ou yarn
+## Supported entrypoints
+### Produção
+- `npm run scrape-push`
+- `node scripts/scrape-and-push.js --run-now`
 
-## 🔧 Instalação
+### Validação e diagnóstico
+- `node run-scraper.js --platform=olx --url="..." --n8n`
+- `node scripts/validate-integration.js --platform=olx --url="..."`
+- `npm run lobstr:test -- --url="https://www.idealista.pt/..."`
 
+### Legacy compatibility
+- `server.js` e a API Express continuam disponíveis para compatibilidade e troubleshooting.
+- `run-scraper.js` continua disponível como CLI de diagnóstico.
+- Nenhum destes caminhos é a fonte de verdade para a integração com a app.
+
+## Portais suportados
+- `olx`
+- `imovirtual`
+- `idealista` via `src/scrapers/idealista_lobstr/`
+- `custojusto`
+- `casasapo`
+
+O código específico de cada portal vive em `src/scrapers/<portal>/`.
+
+## FSBO precision model
+O scraper não entrega tudo o que raspa. Antes do push:
+- normaliza os dados
+- deduplica localmente
+- calcula `fsbo_score` e `fsbo_decision`
+- bloqueia URLs inválidas, categorias proibidas, rent-only, sinais de agência e casos incertos
+
+O último gate comum está em `src/integration/precisionGate.js`.
+
+## Instalação
 ```bash
-# Clonar o repositório
-cd fsbo-scraper
-
-# Instalar dependências
 npm install
-
-# Instalar browsers do Playwright
 npx playwright install chromium
 ```
 
-## 🏃 Como Correr Localmente
+## Variáveis de ambiente
+### Obrigatórias para `scrape-and-push`
+- `APP_API_URL`
+- `SCRAPER_API_KEY`
+- `SCRAPER_TENANT_ID`
 
-```bash
-# Modo produção
-npm start
+### Runtime / browser
+- `PORT`
+- `NODE_ENV`
+- `FSBO_HEADLESS`
+- `CI`
+- `N8N`
 
-# Modo desenvolvimento (com watch)
-npm run dev
-```
+### Idealista / Lobstr
+- `LOBSTR_API_KEY`
+- `IDEALISTA_SQUID_ID` opcional
 
-O servidor estará disponível em `http://localhost:3000`
-
-## 📡 API Endpoints
-
-### POST /scrape
-
-Extrai informações de um anúncio FSBO.
-
-**Request Body:**
-```json
-{
-  "url": "https://example.com/listing/...",
-  "includeRawHtml": false,  // opcional
-  "headless": true          // opcional
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "platform": "example",
-  "url": "https://example.com/listing/...",
-  "phone": "+1234567890",
-  "title": "Beautiful House for Sale",
-  "price": "$250,000",
-  "location": "New York, NY",
-  "description": "Full description...",
-  "rawHtml": "..."  // apenas se includeRawHtml: true
-}
-```
-
-**Exemplo de uso com cURL:**
-```bash
-curl -X POST http://localhost:3000/scrape \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://example.com/listing/..."
-  }'
-```
-
-**Exemplo com Node.js:**
-```javascript
-const response = await fetch('http://localhost:3000/scrape', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    url: 'https://example.com/listing/...'
-  })
-});
-
-const data = await response.json();
-console.log(data);
-```
-
-### GET /health
-
-Verifica o status do serviço.
-
-**Response:**
-```json
-{
-  "status": "ok",
-  "timestamp": "2024-01-15T10:30:00.000Z"
-}
-```
-
-## 🐳 Deploy com Docker
-
-### Build da imagem:
-```bash
-docker build -t fsbo-scraper .
-```
-
-### Executar container:
-```bash
-docker run -p 3000:3000 fsbo-scraper
-```
-
-## 🚂 Deploy no Railway
-
-1. Conecte seu repositório ao Railway
-2. Railway detectará automaticamente o Dockerfile
-3. Configure a variável de ambiente `PORT` (opcional, padrão: 3000)
-4. Deploy automático!
-
-## ✈️ Deploy no Fly.io
-
-1. Instale o Fly CLI: `curl -L https://fly.io/install.sh | sh`
-2. Faça login: `fly auth login`
-3. Crie o app: `fly launch`
-4. Deploy: `fly deploy`
-
-## 🧪 Testes
-
+## Testes
 ```bash
 npm test
+npm run test:headless
 ```
 
-## 📁 Estrutura do Projeto
+Suites importantes:
+- `tests/scrape-and-push.test.js`
+- `tests/scraper-http-flow.test.js`
+- `tests/precision-gate.test.js`
+- `tests/fsbo-confidence-model.test.js`
+- `tests/portal-safe-fixes.test.js`
+- `tests/test-idealista-lobstr.js`
 
-```
-.
-├── src/
-│   ├── scrapers/
-│   │   └── example.js        # Template de scraper
-│   ├── routes/
-│   │   └── scrapeRoute.js
-│   ├── controllers/
-│   │   └── scrapeController.js
-│   └── utils/
-│       ├── browser.js
-│       └── selectors.js
-├── tests/
-│   └── test.js
-├── server.js
-├── package.json
-├── Dockerfile
-└── README.md
-```
+## Deploy validation
+Usa o checklist em `SCRAPER_APP_VALIDATION_CHECKLIST.md` antes de promover mudanças:
+- validar env e migrations na app
+- confirmar `GET /api/scraper/configs`
+- correr `--dry-run`
+- validar ingest determinístico com drops/increases/removals
 
-## 🔍 Adicionar Novo Scraper
+## Dead/outdated paths
+Os seguintes caminhos já não devem ser tratados como produção:
+- `pipeline/incremental.js` como fonte de verdade de estado
+- documentação antiga Express-first
+- scripts manuais antigos do Idealista não usados pela suite oficial
 
-1. Crie um novo arquivo em `src/scrapers/` (ex: `fsbo.js`)
-2. Use `src/scrapers/example.js` como template
-3. Implemente a função de scraping seguindo o padrão:
-   ```javascript
-   async function scrapeFSBO(url, options = {}) {
-     // Seu código aqui
-     return {
-       success: true,
-       platform: 'fsbo',
-       url,
-       title,
-       price,
-       location,
-       phone,
-       description
-     };
-   }
-   module.exports = scrapeFSBO;
-   ```
-4. Adicione a detecção da plataforma em `src/utils/selectors.js`:
-   ```javascript
-   if (lowerUrl.includes('fsbo.com')) {
-     return 'fsbo';
-   }
-   ```
-
-## ⚙️ Configuração
-
-### Variáveis de Ambiente
-
-- `PORT` - Porta do servidor (padrão: 3000)
-- `NODE_ENV` - Ambiente (development/production)
-- `HEADLESS` - Modo headless do browser (true/false, padrão: true)
-
-### Opções de Scraping
-
-- `headless`: true/false - Modo headless do browser (padrão: true)
-- `includeRawHtml`: true/false - Incluir HTML bruto na resposta (padrão: false)
-
-## 🐛 Troubleshooting
-
-### Erro: "Browser not found"
-```bash
-npx playwright install chromium
-```
-
-### Erro: "Navigation timeout"
-- Verifique se a URL está correta
-- Alguns sites podem ter proteções anti-bot mais fortes
-- Tente aumentar o timeout nas opções
-
-### Telefone não encontrado
-- Alguns anúncios podem não ter telefone disponível
-- Verifique se o botão "mostrar número" foi clicado corretamente
-- Alguns sites podem exigir login
-
-## 📝 Notas
+Se forem mantidos, são apenas para diagnóstico local.
 
 - Este scraper usa técnicas stealth para evitar detecção
 - Alguns sites podem mudar seus seletores CSS, necessitando atualização

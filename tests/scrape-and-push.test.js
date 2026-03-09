@@ -232,7 +232,7 @@ function parseLogLines(stderrCapture) {
     assert.equal(stdout.toString(), '');
 
     const logs = parseLogLines(stderr);
-    assert.ok(logs.some((entry) => entry.message.includes('Pushed olx batch successfully')));
+    assert.ok(logs.some((entry) => entry.message.includes('Pushed olx run successfully')));
   });
 })().catch((error) => {
   console.error(error);

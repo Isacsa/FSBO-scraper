@@ -128,6 +128,7 @@ const ANTI_AGENCY_PATTERNS = [
  */
 const DUPLICATE_CACHE_FILE = path.join(__dirname, '../../.duplicate-cache.json');
 const DUPLICATE_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 horas
+const ENABLE_DUPLICATE_SIGNAL = process.env.FSBO_ENABLE_DUPLICATE_SIGNAL === '1';
 
 /**
  * Carrega cache de duplicados
@@ -432,6 +433,10 @@ function createFingerprint(data) {
  * Detecta se é duplicado
  */
 function detectDuplicate(data) {
+  if (!ENABLE_DUPLICATE_SIGNAL) {
+    return false;
+  }
+
   try {
     const fingerprint = createFingerprint(data);
     const cache = loadDuplicateCache();
@@ -491,8 +496,6 @@ function analyzePhoneHeuristic(phone) {
  * @returns {Object} - Sinais FSBO
  */
 function analyzeFsboSignals(data, platform = 'olx') {
-  console.log('[FSBOSignals] 🔍 Analisando sinais FSBO...');
-
   const title = data.title || '';
   const description = data.description || '';
   const photos = data.photos || [];
@@ -628,14 +631,6 @@ function analyzeFsboSignals(data, platform = 'olx') {
     : fsboDecision === 'fsbo'
       ? false
       : null;
-
-  console.log('[FSBOSignals] ✅ Análise concluída:');
-  console.log(`  - watermark: ${watermark}`);
-  console.log(`  - duplicate: ${duplicate}`);
-  console.log(`  - professional_photos: ${professionalPhotos}`);
-  console.log(`  - agency_keywords: ${agencyKeywords.length} encontrados`);
-  console.log(`  - fsbo_score: ${fsboScore}`);
-  console.log(`  - fsbo_decision: ${fsboDecision}`);
 
   return {
     watermark,

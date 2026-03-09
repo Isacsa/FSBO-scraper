@@ -68,6 +68,8 @@ function toIngestItem(rawItem, source) {
  * @param {number} options.durationMs - scraping duration in ms
  * @param {number} [options.dedupeRemovedLocal] - items removed by local dedupe
  * @param {number} [options.totalScraped] - original item count before precision gate
+ * @param {'COMPLETED'|'PARTIAL'|'FAILED'} [options.runStatus] - source coverage state
+ * @param {Object[]} [options.errors] - source-level errors/warnings
  * @returns {Object} full ingest payload for POST /api/scraper/ingest
  */
 function buildIngestPayload({
@@ -79,6 +81,8 @@ function buildIngestPayload({
   durationMs,
   dedupeRemovedLocal = 0,
   totalScraped = rawItems.length,
+  runStatus = 'COMPLETED',
+  errors = [],
 }) {
   const items = rawItems.map(item => toIngestItem(item, source));
 
@@ -89,7 +93,9 @@ function buildIngestPayload({
     area_query: areaQuery || null,
     scraped_at: new Date().toISOString(),
     duration_ms: durationMs,
+    run_status: runStatus,
     items,
+    ...(errors.length > 0 ? { errors } : {}),
     meta: {
       total_scraped: totalScraped,
       dedupe_removed_local: dedupeRemovedLocal,

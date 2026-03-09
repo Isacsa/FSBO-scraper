@@ -2,6 +2,7 @@ const assert = require('assert');
 const { analyzeFsboSignals } = require('../src/services/fsboSignals');
 const { normalizeFinalObject } = require('../src/utils/finalNormalizer');
 const { toIngestItem } = require('../src/integration/toIngestPayload');
+const corpus = require('./fixtures/fsbo-corpus');
 
 console.log('\nFSBO confidence model tests');
 
@@ -129,4 +130,21 @@ runTest('ingest payload propagates fsbo score and raw decision metadata', () => 
 
   assert.equal(ingestItem.fsbo_score, 81);
   assert.equal(ingestItem.signals.fsbo_decision, 'fsbo');
+});
+
+runTest('qa corpus examples keep score polarity aligned with decisions', () => {
+  corpus.accepted.forEach(({ item, source, name }) => {
+    const signals = analyzeFsboSignals(item, source);
+    assert.ok(signals.fsbo_score >= 60, `Expected stronger FSBO score for ${name}`);
+  });
+
+  corpus.rejected.forEach(({ item, source, name }) => {
+    const signals = analyzeFsboSignals(item, source);
+    if (item.fsbo_decision === 'agency' || item.advertiser?.is_agency === true) {
+      assert.ok(
+        signals.fsbo_score <= 40 || signals.fsbo_decision === 'agency',
+        `Expected low-confidence score for ${name}`
+      );
+    }
+  });
 });

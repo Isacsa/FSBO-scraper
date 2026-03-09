@@ -12,16 +12,9 @@
 const path = require('path');
 const fs = require('fs');
 const { configureOutput, printJSON, log } = require('../src/utils/output');
-const { normalizeFinalObject } = require('../src/utils/finalNormalizer');
 const { calculateFsboScores } = require('../pipeline/fsboScore');
 const { dedupeListInMemory } = require('../pipeline/deduplicate');
-
-// Importar scrapers
-const scrapeOLX = require('../src/scrapers/olx');
-const scrapeImovirtual = require('../src/scrapers/imovirtual');
-const scrapeIdealistaLobstr = require('../src/scrapers/idealista_lobstr/idealista.scraper');
-const scrapeCustoJusto = require('../src/scrapers/custojusto/custojusto.scraper');
-const scrapeCasaSapo = require('../src/scrapers/casasapo/casasapo.scraper');
+const { runPlatform } = require('../src/core/runPlatform');
 
 const SUPPORTED_PLATFORMS = ['olx', 'imovirtual', 'idealista', 'custojusto', 'casasapo'];
 
@@ -100,40 +93,19 @@ async function runScraper(platform, url, options) {
   try {
     log(`[${platform.toUpperCase()}] 🚀 Iniciando scrape...`);
     log(`[${platform.toUpperCase()}] URL: ${url}`);
-    
-    let rawResponse = null;
-    let results = [];
-    
-    if (platform === 'olx') {
-      const data = await scrapeOLX(url, { headless: options.headless });
-      results = [normalizeFinalObject(data)];
-    } else if (platform === 'imovirtual') {
-      const data = await scrapeImovirtual(url, { headless: options.headless });
-      results = [normalizeFinalObject(data)];
-    } else if (platform === 'idealista') {
-      rawResponse = await scrapeIdealistaLobstr(url, { 
-        maxResults: options.maxResults || null 
-      });
-      results = (rawResponse.items || []).map(item => normalizeFinalObject(item));
-    } else if (platform === 'custojusto') {
-      rawResponse = await scrapeCustoJusto(url, {
-        onlyNew: options.onlyNew,
+    const { rawResponse, results } = await runPlatform({
+      platform,
+      url,
+      options: {
+        mode: options.onlyNew ? 'new' : 'full',
         maxPages: options.maxPages || null,
-        maxAds: options.maxAds || null,
-        headless: options.headless
-      });
-      const ads = rawResponse.items || rawResponse.all_ads || rawResponse.new_ads || [];
-      results = ads.map(item => normalizeFinalObject(item));
-    } else if (platform === 'casasapo') {
-      rawResponse = await scrapeCasaSapo(url, {
-        onlyNew: options.onlyNew,
-        maxPages: options.maxPages || null,
-        maxAds: options.maxAds || null,
-        headless: options.headless
-      });
-      const ads = rawResponse.items || rawResponse.all_ads || [];
-      results = ads.map(item => normalizeFinalObject(item));
-    }
+        maxAds: options.maxAds || options.maxResults || null,
+        headless: options.headless,
+        filterAgencies: true,
+      },
+      outputShape: 'cli',
+      normalize: true,
+    });
     
     const duration = Date.now() - startTime;
     log(`[${platform.toUpperCase()}] ✅ Concluído: ${results.length} anúncios em ${(duration / 1000).toFixed(2)}s`);
