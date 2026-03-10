@@ -103,7 +103,8 @@ async function scrapeOLX(url, options = {}) {
     maxPages = null,
     maxAds = null,
     headless = true,
-    filterAgencies: shouldFilterAgencies = true
+    filterAgencies: shouldFilterAgencies = true,
+    filterPrivateOnly = true
   } = options;
   
   console.log(`[${PLATFORM.toUpperCase()}] 🚀 Iniciando scrape...`);
@@ -136,7 +137,8 @@ async function scrapeOLX(url, options = {}) {
     const listingUrls = await extractAllListingUrls(url, {
       maxPages,
       timeout: 40000,
-      headless
+      headless,
+      filterPrivateOnly
     });
     
     if (listingUrls.length === 0) {

@@ -37,4 +37,7 @@ playwright-report/
 dist/
 build/
 
+# Price tracker state
+data/price-history/
+
 

@@ -132,6 +132,31 @@ runTest('ingest payload propagates fsbo score and raw decision metadata', () => 
   assert.equal(ingestItem.signals.fsbo_decision, 'fsbo');
 });
 
+runTest('ingest payload falls back to signals.fsbo_score when item.fsbo_score is missing', () => {
+  const ingestItem = toIngestItem({
+    source: 'olx',
+    ad_id: '456',
+    url: 'https://www.olx.pt/d/anuncio/teste-ID456.html',
+    title: 'Moradia T3',
+    description: 'Venda particular',
+    price: 200000,
+    location: {},
+    property: {},
+    advertiser: { name: 'Joao', is_agency: false, url: null },
+    signals: {
+      watermark: false,
+      duplicate: false,
+      professional_photos: false,
+      agency_keywords: [],
+      fsbo_score: 74,
+      fsbo_decision: 'fsbo',
+    },
+    // NOTE: fsbo_score is NOT set at item level — only inside signals
+  }, 'olx');
+
+  assert.equal(ingestItem.fsbo_score, 74, 'Should fall back to signals.fsbo_score');
+});
+
 runTest('qa corpus examples keep score polarity aligned with decisions', () => {
   corpus.accepted.forEach(({ item, source, name }) => {
     const signals = analyzeFsboSignals(item, source);

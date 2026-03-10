@@ -6,8 +6,8 @@
 const axios = require('axios');
 
 const LOBSTR_API_BASE = 'https://api.lobstr.io/v1';
-// UUID do squid - pode ser configurado via env
-const IDEALISTA_SQUID_ID = process.env.IDEALISTA_SQUID_ID || '88e4e353ecad4a219922c82a47eac740';
+const IDEALISTA_SQUID_ID = process.env.IDEALISTA_SQUID_ID || null;
+const IDEALISTA_SQUID_FALLBACK = '88e4e353ecad4a219922c82a47eac740';
 
 function getRequiredLobstrApiKey() {
   const apiKey = process.env.LOBSTR_API_KEY;
@@ -115,19 +115,21 @@ async function findIdealistaSquid() {
  * @returns {Promise<string>} - UUID do squid
  */
 async function getIdealistaSquidId() {
-  // Se já está configurado, usar diretamente
-  if (IDEALISTA_SQUID_ID && IDEALISTA_SQUID_ID !== 'null') {
+  // Se já está configurado via env, usar diretamente
+  if (IDEALISTA_SQUID_ID) {
     return IDEALISTA_SQUID_ID;
   }
-  
+
   // Tentar encontrar automaticamente
-  console.log('[Lobstr Client] 🔍 Procurando squid Idealista automaticamente...');
+  console.log('[Lobstr Client] IDEALISTA_SQUID_ID not set, searching automatically...');
   const foundId = await findIdealistaSquid();
   if (foundId) {
     return foundId;
   }
-  
-  throw new Error('IDEALISTA_SQUID_ID não configurado e não foi possível encontrar automaticamente. Execute: node scripts/list-lobstr-squids.js para obter o UUID correto.');
+
+  // Use hardcoded fallback with warning
+  console.warn(`[Lobstr Client] IDEALISTA_SQUID_ID not configured — using hardcoded fallback ${IDEALISTA_SQUID_FALLBACK}. Set IDEALISTA_SQUID_ID env var to suppress this warning.`);
+  return IDEALISTA_SQUID_FALLBACK;
 }
 
 /**

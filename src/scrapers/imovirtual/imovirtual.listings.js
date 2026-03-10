@@ -133,22 +133,29 @@ async function extractAllListingUrls(listingUrl, options = {}) {
   const {
     maxPages = null,
     timeout = 40000,
-    headless = true
+    headless = true,
+    filterPrivateOnly = true
   } = options;
   
   console.log('[Imovirtual Listings] 📋 Iniciando extração de listagem...');
   console.log(`[Imovirtual Listings] URL: ${listingUrl}`);
   
-  // Validar e garantir que ownerTypeSingleSelect=PRIVATE está presente
+  // Handle ownerTypeSingleSelect based on filterPrivateOnly
   const urlObj = new URL(listingUrl);
   const searchParams = new URLSearchParams(urlObj.search);
-  if (!searchParams.has('ownerTypeSingleSelect') || searchParams.get('ownerTypeSingleSelect') !== 'PRIVATE') {
-    console.warn('[Imovirtual Listings] ⚠️  AVISO: Filtro de particulares não encontrado na URL!');
-    console.warn('[Imovirtual Listings] ⚠️  Adicionando ownerTypeSingleSelect=PRIVATE...');
-    searchParams.set('ownerTypeSingleSelect', 'PRIVATE');
+  if (filterPrivateOnly) {
+    if (!searchParams.has('ownerTypeSingleSelect') || searchParams.get('ownerTypeSingleSelect') !== 'PRIVATE') {
+      console.warn('[Imovirtual Listings] ⚠️  AVISO: Filtro de particulares não encontrado na URL!');
+      console.warn('[Imovirtual Listings] ⚠️  Adicionando ownerTypeSingleSelect=PRIVATE...');
+      searchParams.set('ownerTypeSingleSelect', 'PRIVATE');
+      urlObj.search = searchParams.toString();
+      listingUrl = urlObj.toString();
+      console.log(`[Imovirtual Listings] ✅ URL corrigida: ${listingUrl}`);
+    }
+  } else {
+    searchParams.delete('ownerTypeSingleSelect');
     urlObj.search = searchParams.toString();
     listingUrl = urlObj.toString();
-    console.log(`[Imovirtual Listings] ✅ URL corrigida: ${listingUrl}`);
   }
   
   const browser = await createBrowser({ 

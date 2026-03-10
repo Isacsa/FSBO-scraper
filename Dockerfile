@@ -45,13 +45,10 @@ RUN npx playwright install-deps chromium
 # Copiar código da aplicação
 COPY . .
 
-# Expor porta
-EXPOSE 3000
-
 # Variável de ambiente para Playwright
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-# Comando para iniciar a aplicação
-CMD ["npm", "start"]
+# Production orchestrator (scrape-and-push)
+CMD ["node", "scripts/scrape-and-push.js"]
 
 

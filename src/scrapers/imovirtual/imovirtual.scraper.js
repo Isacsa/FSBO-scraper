@@ -71,7 +71,8 @@ async function scrapeImovirtual(url, options = {}) {
     onlyNew = false,
     maxPages = null,
     maxAds = null,
-    headless = true
+    headless = true,
+    filterPrivateOnly = true
   } = options;
   
   console.log(`[${PLATFORM.toUpperCase()}] 🚀 Iniciando scrape...`);
@@ -98,7 +99,8 @@ async function scrapeImovirtual(url, options = {}) {
     const listingUrls = await extractAllListingUrls(url, {
       maxPages,
       timeout: 40000,
-      headless
+      headless,
+      filterPrivateOnly
     });
     
     if (listingUrls.length === 0) {

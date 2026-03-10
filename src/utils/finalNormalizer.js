@@ -181,7 +181,6 @@ function normalizeSignals(signals) {
  * Garante que respeita exatamente o schema FSBO
  */
 function normalizeFinalObject(data) {
-  console.log('[FinalNormalizer] 🔍 Normalizando objeto final...');
   
   // Criar objeto base com todas as chaves obrigatórias
   const normalized = {
@@ -231,9 +230,7 @@ function normalizeFinalObject(data) {
   if (final.signals && final.signals.hasOwnProperty('is_agency')) {
     delete final.signals.is_agency;
   }
-  
-  console.log('[FinalNormalizer] ✅ Objeto final normalizado');
-  
+
   return final;
 }
 

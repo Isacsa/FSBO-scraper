@@ -50,7 +50,9 @@ function toIngestItem(rawItem, source) {
     },
     photos: Array.isArray(item.photos) ? item.photos.filter(p => typeof p === 'string' && p.length > 0) : [],
     features: Array.isArray(item.features) ? item.features.filter(f => typeof f === 'string' && f.length > 0) : [],
-    fsbo_score: typeof item.fsbo_score === 'number' ? item.fsbo_score : null,
+    fsbo_score: typeof item.fsbo_score === 'number'
+      ? item.fsbo_score
+      : (typeof item.signals?.fsbo_score === 'number' ? item.signals.fsbo_score : null),
     fingerprint: item.fingerprint || item._fingerprint || null,
     signals: item.signals && typeof item.signals === 'object' ? item.signals : null,
   };

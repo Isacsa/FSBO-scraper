@@ -389,19 +389,8 @@ function processPropertyFeatures(rawFeatures, title = '', description = '') {
  * @returns {Object} - Propriedade normalizada
  */
 function normalizeProperty(rawFeatures, title = '', description = '') {
-  console.log('[PropertyNormalizer] 🔍 Normalizando características do imóvel...');
-  
   const property = processPropertyFeatures(rawFeatures, title, description);
-  
-  console.log('[PropertyNormalizer] ✅ Normalização concluída');
-  console.log(`  - type: ${property.type || 'null'}`);
-  console.log(`  - tipology: ${property.tipology || 'null'}`);
-  console.log(`  - area_total: ${property.area_total || 'null'}`);
-  console.log(`  - area_useful: ${property.area_useful || 'null'}`);
-  console.log(`  - year: ${property.year || 'null'}`);
-  console.log(`  - floor: ${property.floor || 'null'}`);
-  console.log(`  - condition: ${property.condition || 'null'}`);
-  
+
   return {
     type: property.type || null,
     tipology: property.tipology || null,

@@ -93,6 +93,7 @@ function buildScraperOptions(platform, opts) {
     maxAds = null,
     headless = true,
     filterAgencies = true,
+    filterPrivateOnly = true,
     // Idealista Lobstr specific
     maxWait = null
   } = opts || {};
@@ -100,15 +101,15 @@ function buildScraperOptions(platform, opts) {
   const onlyNew = mode === 'new';
 
   if (platform === 'olx') {
-    return { onlyNew, maxPages, maxAds, headless, filterAgencies };
+    return { onlyNew, maxPages, maxAds, headless, filterAgencies, filterPrivateOnly };
   }
   if (platform === 'imovirtual') {
-    return { onlyNew, maxPages, maxAds, headless };
+    return { onlyNew, maxPages, maxAds, headless, filterPrivateOnly };
   }
   if (platform === 'idealista') {
     const out = {
       maxResults: maxAds || null,
-      filterAgencies
+      filterAgencies: filterPrivateOnly === false ? false : filterAgencies
     };
     if (maxWait) out.maxWait = maxWait;
     return out;
@@ -117,7 +118,7 @@ function buildScraperOptions(platform, opts) {
     return { onlyNew, maxPages, maxAds, headless };
   }
   if (platform === 'casasapo') {
-    return { onlyNew, maxPages, maxAds, headless };
+    return { onlyNew, maxPages, maxAds, headless, filterPrivateOnly };
   }
 
   return {};

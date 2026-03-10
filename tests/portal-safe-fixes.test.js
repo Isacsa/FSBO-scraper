@@ -92,6 +92,37 @@ async function runTest(name, fn) {
     assert.equal(normalized.advertiser.is_agency, null);
   });
 
+  await runTest('withFileLock removes stale locks and throws on exhausted retries', async () => {
+    const fs = require('fs');
+    const path = require('path');
+    const { withFileLock } = require('../src/core/state/fileStateStore');
+    const lockPath = path.join(__dirname, '.test-lock-stale');
+
+    // Clean up from previous runs
+    try { fs.unlinkSync(lockPath); } catch (e) {}
+
+    // Create a stale lock file with old mtime
+    fs.writeFileSync(lockPath, '99999');
+    const past = new Date(Date.now() - 60000);
+    fs.utimesSync(lockPath, past, past);
+
+    // withFileLock should detect stale lock, remove it, and succeed
+    let called = false;
+    await withFileLock(lockPath, async () => { called = true; }, { retries: 3, retryDelayMs: 10, staleLockMs: 5000 });
+    assert.ok(called, 'Function should have been called after stale lock removal');
+    assert.ok(!fs.existsSync(lockPath), 'Lock file should be cleaned up');
+
+    // Now test that an active lock (not stale) causes throw after retries
+    fs.writeFileSync(lockPath, String(process.pid));
+    try {
+      await withFileLock(lockPath, async () => {}, { retries: 2, retryDelayMs: 10, staleLockMs: 300000 });
+      assert.fail('Should have thrown');
+    } catch (err) {
+      assert.ok(err.message.includes('Failed to acquire file lock'));
+    }
+    try { fs.unlinkSync(lockPath); } catch (e) {}
+  });
+
   await runTest('Deduplication canonicalizes Imovirtual hpr URLs', async () => {
     assert.equal(
       canonicalizeAdUrl('https://www.imovirtual.com/hpr/pt/anuncio/teste-ID123.html?foo=bar#section'),

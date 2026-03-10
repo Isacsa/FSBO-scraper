@@ -139,7 +139,7 @@ function loadDuplicateCache() {
       const data = fs.readFileSync(DUPLICATE_CACHE_FILE, 'utf8');
       const cache = JSON.parse(data);
       const now = Date.now();
-      
+
       // Limpar entradas expiradas
       const valid = {};
       for (const [key, timestamp] of Object.entries(cache)) {
@@ -147,11 +147,12 @@ function loadDuplicateCache() {
           valid[key] = timestamp;
         }
       }
-      
+
       return valid;
     }
   } catch (error) {
-    console.warn('[FSBOSignals] ⚠️  Erro ao carregar cache de duplicados:', error.message);
+    console.error('[FSBOSignals] Duplicate cache load failed — deduplication disabled for this run:', error.message);
+    return { _cacheError: true };
   }
   return {};
 }
@@ -163,7 +164,7 @@ function saveDuplicateCache(cache) {
   try {
     fs.writeFileSync(DUPLICATE_CACHE_FILE, JSON.stringify(cache, null, 2));
   } catch (error) {
-    console.warn('[FSBOSignals] ⚠️  Erro ao salvar cache de duplicados:', error.message);
+    console.error('[FSBOSignals] Duplicate cache save failed:', error.message);
   }
 }
 
@@ -440,18 +441,23 @@ function detectDuplicate(data) {
   try {
     const fingerprint = createFingerprint(data);
     const cache = loadDuplicateCache();
-    
+
+    // If cache failed to load, skip dedup rather than silently losing data
+    if (cache._cacheError) {
+      return false;
+    }
+
     if (cache[fingerprint]) {
       return true; // Já existe no cache
     }
-    
+
     // Adicionar ao cache
     cache[fingerprint] = Date.now();
     saveDuplicateCache(cache);
-    
+
     return false;
   } catch (error) {
-    console.warn('[FSBOSignals] ⚠️  Erro ao detectar duplicado:', error.message);
+    console.error('[FSBOSignals] Duplicate detection error:', error.message);
     return false;
   }
 }

@@ -16,7 +16,8 @@ async function scrapeCasaSapo(listingUrl, options = {}) {
     onlyNew = false,
     maxPages = null,
     maxAds = null,
-    headless = true  // Default true, mas será validado por shouldRunHeadless() em createBrowser
+    headless = true,  // Default true, mas será validado por shouldRunHeadless() em createBrowser
+    filterPrivateOnly = true
   } = options;
   
   console.log('[CASASAPO] 🚀 Iniciando scrape...');
@@ -28,7 +29,7 @@ async function scrapeCasaSapo(listingUrl, options = {}) {
   try {
     // Fase 1: Extrair URLs da listagem
     console.log('[CASASAPO] 📋 Fase 1: Extraindo URLs de listagem...');
-    const adUrls = await extractAllListingUrls(listingUrl, { maxPages, timeout: 40000, headless });
+    const adUrls = await extractAllListingUrls(listingUrl, { maxPages, timeout: 40000, headless, filterPrivateOnly });
     
     if (adUrls.length === 0) {
       console.log('[CASASAPO] ⚠️  Nenhum anúncio encontrado na listagem');

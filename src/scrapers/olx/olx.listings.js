@@ -244,14 +244,17 @@ async function extractAllListingUrls(listingUrl, options = {}) {
   const {
     maxPages = null,
     timeout = 40000,
-    headless = true
+    headless = true,
+    filterPrivateOnly = true
   } = options;
   
   console.log('[OLX Listings] 📋 Iniciando extração de listagem...');
   console.log(`[OLX Listings] URL original: ${listingUrl}`);
   
-  // Garantir que a URL tem o filtro de particulares
-  const urlWithPrivateFilter = ensurePrivateFilter(listingUrl);
+  // Garantir que a URL tem o filtro de particulares (se filterPrivateOnly)
+  const urlWithPrivateFilter = filterPrivateOnly
+    ? ensurePrivateFilter(listingUrl)
+    : listingUrl;
   console.log(`[OLX Listings] URL com filtro: ${urlWithPrivateFilter}`);
   
   const browser = await createBrowser({ 
@@ -308,13 +311,14 @@ async function extractAllListingUrls(listingUrl, options = {}) {
       
       // Navegar para próxima página
       currentPage++;
-      const nextPageUrl = await page.evaluate((currentPage) => {
+      const nextPageUrl = await page.evaluate(({ currentPage, filterPrivateOnly }) => {
         const url = new URL(window.location.href);
         url.searchParams.set('page', currentPage);
-        // Garantir que o filtro de particulares está presente
-        url.searchParams.set('search[private_business]', 'private');
+        if (filterPrivateOnly !== false) {
+          url.searchParams.set('search[private_business]', 'private');
+        }
         return url.toString();
-      }, currentPage);
+      }, { currentPage, filterPrivateOnly });
       
       console.log(`[OLX Listings] 📄 Carregando página ${currentPage}...`);
       await page.waitForTimeout(2000);

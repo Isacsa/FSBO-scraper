@@ -8,17 +8,18 @@ const { createBrowser, createPage, navigateWithRetry, randomDelay, slowScroll, c
  * Extrai URLs de anúncios da página de listagem
  * Retorna apenas URLs de anúncios SEM telefone visível (candidatos a FSBO)
  */
-async function extractListingUrls(page) {
+async function extractListingUrls(page, options = {}) {
+  const filterPrivateOnly = options.filterPrivateOnly !== false;
   await randomDelay(2000, 3000);
-  
+
   // Scroll para carregar lazy-load
   for (let i = 0; i < 5; i++) {
     await slowScroll(page, 'down', 400);
     await randomDelay(1000, 2000);
   }
-  
-  // Extrair URLs de anúncios sem botão "Ver Telefone" (candidatos a FSBO, não prova final)
-  const result = await page.evaluate(() => {
+
+  // Extrair URLs de anúncios da listagem
+  const result = await page.evaluate((filterPrivateOnly) => {
     const urlSet = new Set();
     const debug = {
       totalCards: 0,
@@ -102,9 +103,12 @@ async function extractListingUrls(page) {
       
       if (hasPhoneBtn) {
         debug.withPhone++;
+        if (!filterPrivateOnly) {
+          const fullUrl = href.startsWith('http') ? href : `https://casa.sapo.pt${href}`;
+          urlSet.add(fullUrl);
+        }
       } else {
         debug.withoutPhone++;
-        // Sem telefone visível continua candidato e será validado depois
         const fullUrl = href.startsWith('http') ? href : `https://casa.sapo.pt${href}`;
         urlSet.add(fullUrl);
       }
@@ -114,27 +118,10 @@ async function extractListingUrls(page) {
       urls: Array.from(urlSet),
       debug: debug
     };
-  });
-  
-  // Imprimir debug
-  if (result.debug) {
-    console.log(`[DEBUG] Total de cards .property: ${result.debug.totalCards}`);
-    console.log(`[DEBUG] Cards com link: ${result.debug.cardsWithLink}`);
-    console.log(`[DEBUG] URLs válidos: ${result.debug.validUrls}`);
-    console.log(`[DEBUG] Com property-phone (agências): ${result.debug.withPhone}`);
-    console.log(`[DEBUG] Sem property-phone (FSBO): ${result.debug.withoutPhone}`);
-    if (result.debug.rejected.length > 0) {
-      console.log(`[DEBUG] Rejeitados: ${result.debug.rejected.length}`);
-      result.debug.rejected.slice(0, 5).forEach(r => {
-        console.log(`[DEBUG]   - Card ${r.card}: ${r.reason}${r.href ? ` (${r.href})` : ''}`);
-      });
-    }
-  }
+  }, filterPrivateOnly);
   
   const urls = result.urls;
-  
-  console.log(`[CasaSapo Extract] ✅ Encontrados ${urls.length} anúncios candidatos sem telefone nesta página`);
-  
+
   return urls;
 }
 
@@ -145,7 +132,8 @@ async function extractAllListingUrls(listingUrl, options = {}) {
   const {
     maxPages = null,
     timeout = 40000,
-    headless = true  // Default true, mas será validado por shouldRunHeadless() em createBrowser
+    headless = true,  // Default true, mas será validado por shouldRunHeadless() em createBrowser
+    filterPrivateOnly = true
   } = options;
   
   console.log('[CasaSapo Extract] 📋 Iniciando extração de listagem...');
@@ -178,7 +166,7 @@ async function extractAllListingUrls(listingUrl, options = {}) {
     
     while (true) {
       // Extrair URLs desta página
-      const pageUrls = await extractListingUrls(page);
+      const pageUrls = await extractListingUrls(page, { filterPrivateOnly });
       pageUrls.forEach(url => allUrls.add(url));
       
       console.log(`[CasaSapo Extract] 📊 Página ${currentPage}: ${pageUrls.length} anúncios (total acumulado: ${allUrls.size})`);
