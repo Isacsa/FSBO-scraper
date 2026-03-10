@@ -29,5 +29,6 @@ require('./precision-gate.test');
 require('./portal-safe-fixes.test');
 require('./fsbo-confidence-model.test');
 require('./test-idealista-lobstr');
-
+require('./valuation.test');
+require('./price-tracker.test');
 
