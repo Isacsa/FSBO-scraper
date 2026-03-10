@@ -49,9 +49,9 @@ function fingerprint(ad) {
   }
   
   // Preço + tipologia + área + localização (combinado)
-  const price = (ad.price || '').trim();
-  const tipology = (ad.property?.tipology || '').trim();
-  const area = (ad.property?.area_useful || ad.property?.area_total || '').trim();
+  const price = String(ad.price || '').trim();
+  const tipology = String(ad.property?.tipology || '').trim();
+  const area = String(ad.property?.area_useful || ad.property?.area_total || '').trim();
   const location = [
     ad.location?.district,
     ad.location?.municipality,
