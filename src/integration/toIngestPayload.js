@@ -55,6 +55,13 @@ function toIngestItem(rawItem, source) {
       : (typeof item.signals?.fsbo_score === 'number' ? item.signals.fsbo_score : null),
     fingerprint: item.fingerprint || item._fingerprint || null,
     signals: item.signals && typeof item.signals === 'object' ? item.signals : null,
+    // Incremental tracking metadata (when present)
+    ...(item._status ? {
+      change_status: item._status,
+      first_seen: item._first_seen || null,
+      last_seen: item._last_seen || null,
+      ...(item._changed_fields?.length ? { changed_fields: item._changed_fields } : {}),
+    } : {}),
   };
 }
 
@@ -85,6 +92,7 @@ function buildIngestPayload({
   totalScraped = rawItems.length,
   runStatus = 'COMPLETED',
   errors = [],
+  incrementalMeta = null,
 }) {
   const items = rawItems.map(item => toIngestItem(item, source));
 
@@ -102,6 +110,13 @@ function buildIngestPayload({
       total_scraped: totalScraped,
       dedupe_removed_local: dedupeRemovedLocal,
       scraper_version: require('../../package.json').version,
+      ...(incrementalMeta ? {
+        incremental: {
+          new: incrementalMeta.new,
+          updated: incrementalMeta.updated,
+          unchanged: incrementalMeta.unchanged,
+        },
+      } : {}),
     },
   };
 }

@@ -13,7 +13,8 @@
     "price-tracker": "node scripts/price-tracker.js",
     "lobstr:squids": "node scripts/list-lobstr-squids.js",
     "lobstr:test": "node scripts/test-lobstr-connection.js",
-    "analyze": "node scripts/analyze-valuations.js"
+    "analyze": "node scripts/analyze-valuations.js",
+    "daily": "node scripts/scrape-and-push.js --run-now && node scripts/price-tracker.js --run-now"
   },
   "keywords": [
     "scraper",

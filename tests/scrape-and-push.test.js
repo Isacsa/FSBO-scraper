@@ -234,6 +234,278 @@ function parseLogLines(stderrCapture) {
     const logs = parseLogLines(stderr);
     assert.ok(logs.some((entry) => entry.message.includes('Pushed olx run successfully')));
   });
+
+  await runTest('incremental mode filters UNCHANGED items and skips push', async () => {
+    const stdout = createWritableCapture();
+    const stderr = createWritableCapture();
+    const pushedPayloads = [];
+
+    const result = await main({
+      argv: ['--run-now', '--config-id=cfg-inc'],
+      env: {
+        APP_API_URL: 'https://app.example.com',
+        SCRAPER_API_KEY: 'secret-key',
+        SCRAPER_TENANT_ID: 'tenant-123',
+      },
+      stdout,
+      stderr,
+      exit: () => {},
+      deps: {
+        randomUUID: () => 'run-inc',
+        async pullConfigs() {
+          return [{
+            id: 'cfg-inc',
+            area_label: 'Incremental test',
+            sources: { olx: 'https://www.olx.pt/imoveis/viana/' },
+          }];
+        },
+        async runPlatform() {
+          return { results: [
+            { id: 'item-1', title: 'Item A', source: 'olx', ad_id: '1' },
+            { id: 'item-2', title: 'Item B', source: 'olx', ad_id: '2' },
+            { id: 'item-3', title: 'Item C', source: 'olx', ad_id: '3' },
+          ]};
+        },
+        dedupeListInMemory(items) {
+          return { unique: items, duplicates: [] };
+        },
+        applyPrecisionGate(items) {
+          return {
+            accepted: items,
+            rejected: [],
+            uncertain: [],
+            metrics: { accepted_for_push: items.length, rejected_precision: 0, uncertain_blocked: 0 },
+          };
+        },
+        async applyIncremental(items) {
+          // Simulate: item-1 is NEW, item-2 is UPDATED, item-3 is UNCHANGED
+          items[0]._status = 'NEW';
+          items[0]._first_seen = '2026-03-11T00:00:00Z';
+          items[0]._last_seen = '2026-03-11T00:00:00Z';
+          items[0]._changed_fields = [];
+          items[1]._status = 'UPDATED';
+          items[1]._first_seen = '2026-03-10T00:00:00Z';
+          items[1]._last_seen = '2026-03-11T00:00:00Z';
+          items[1]._changed_fields = ['price'];
+          items[2]._status = 'UNCHANGED';
+          items[2]._first_seen = '2026-03-09T00:00:00Z';
+          items[2]._last_seen = '2026-03-11T00:00:00Z';
+          items[2]._changed_fields = [];
+          return {
+            items,
+            meta: { new: 1, updated: 1, unchanged: 1, removed: 0, removed_keys: [] },
+          };
+        },
+        buildIngestPayload(input) {
+          // Only NEW and UPDATED should arrive here
+          assert.equal(input.rawItems.length, 2);
+          assert.ok(input.rawItems.every(i => i._status === 'NEW' || i._status === 'UPDATED'));
+          assert.ok(input.incrementalMeta);
+          assert.equal(input.incrementalMeta.new, 1);
+          assert.equal(input.incrementalMeta.updated, 1);
+          assert.equal(input.incrementalMeta.unchanged, 1);
+          return {
+            run_id: input.runId,
+            source: input.source,
+            items: input.rawItems,
+          };
+        },
+        async pushBatch(payload) {
+          pushedPayloads.push(payload);
+          return { ok: true };
+        },
+      },
+    });
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(pushedPayloads.length, 1);
+    assert.equal(pushedPayloads[0].items.length, 2);
+
+    const logs = parseLogLines(stderr);
+    const incLog = logs.find(e => e.message.includes('Incremental:'));
+    assert.ok(incLog);
+    assert.equal(incLog.incremental_new, 1);
+    assert.equal(incLog.incremental_updated, 1);
+    assert.equal(incLog.incremental_unchanged, 1);
+  });
+
+  await runTest('--legacy flag bypasses incremental tracking', async () => {
+    const stdout = createWritableCapture();
+    const stderr = createWritableCapture();
+    let applyIncrementalCalled = false;
+
+    const result = await main({
+      argv: ['--run-now', '--config-id=cfg-leg', '--legacy'],
+      env: {
+        APP_API_URL: 'https://app.example.com',
+        SCRAPER_API_KEY: 'secret-key',
+        SCRAPER_TENANT_ID: 'tenant-123',
+      },
+      stdout,
+      stderr,
+      exit: () => {},
+      deps: {
+        randomUUID: () => 'run-leg',
+        async pullConfigs() {
+          return [{
+            id: 'cfg-leg',
+            area_label: 'Legacy test',
+            sources: { olx: 'https://www.olx.pt/imoveis/porto/' },
+          }];
+        },
+        async runPlatform() {
+          return { results: [{ id: 'item-1', title: 'Item A' }] };
+        },
+        dedupeListInMemory(items) {
+          return { unique: items, duplicates: [] };
+        },
+        applyPrecisionGate(items) {
+          return {
+            accepted: items,
+            rejected: [],
+            uncertain: [],
+            metrics: { accepted_for_push: items.length, rejected_precision: 0, uncertain_blocked: 0 },
+          };
+        },
+        async applyIncremental() {
+          applyIncrementalCalled = true;
+          return { items: [], meta: {} };
+        },
+        buildIngestPayload(input) {
+          assert.equal(input.incrementalMeta, null);
+          return { run_id: input.runId, source: input.source, items: input.rawItems };
+        },
+        async pushBatch() {
+          return { ok: true };
+        },
+      },
+    });
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(applyIncrementalCalled, false);
+
+    const logs = parseLogLines(stderr);
+    assert.ok(logs.some(e => e.incremental === false));
+  });
+
+  await runTest('incremental skips push when all items are UNCHANGED', async () => {
+    const stdout = createWritableCapture();
+    const stderr = createWritableCapture();
+    let pushCalled = false;
+
+    const result = await main({
+      argv: ['--run-now', '--config-id=cfg-unch'],
+      env: {
+        APP_API_URL: 'https://app.example.com',
+        SCRAPER_API_KEY: 'secret-key',
+        SCRAPER_TENANT_ID: 'tenant-123',
+      },
+      stdout,
+      stderr,
+      exit: () => {},
+      deps: {
+        randomUUID: () => 'run-unch',
+        async pullConfigs() {
+          return [{
+            id: 'cfg-unch',
+            area_label: 'Unchanged test',
+            sources: { olx: 'https://www.olx.pt/imoveis/braga/' },
+          }];
+        },
+        async runPlatform() {
+          return { results: [{ id: 'item-1', title: 'Old item' }] };
+        },
+        dedupeListInMemory(items) {
+          return { unique: items, duplicates: [] };
+        },
+        applyPrecisionGate(items) {
+          return {
+            accepted: items,
+            rejected: [],
+            uncertain: [],
+            metrics: { accepted_for_push: items.length, rejected_precision: 0, uncertain_blocked: 0 },
+          };
+        },
+        async applyIncremental(items) {
+          items[0]._status = 'UNCHANGED';
+          items[0]._first_seen = '2026-03-09T00:00:00Z';
+          items[0]._last_seen = '2026-03-11T00:00:00Z';
+          items[0]._changed_fields = [];
+          return {
+            items,
+            meta: { new: 0, updated: 0, unchanged: 1, removed: 0, removed_keys: [] },
+          };
+        },
+        buildIngestPayload() {
+          pushCalled = true;
+          return { items: [] };
+        },
+        async pushBatch() {
+          pushCalled = true;
+          return {};
+        },
+      },
+    });
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(pushCalled, false);
+
+    const logs = parseLogLines(stderr);
+    assert.ok(logs.some(e => e.message.includes('No new/updated items')));
+  });
+
+  await runTest('incremental metadata flows through to ingest payload', async () => {
+    const { buildIngestPayload: realBuild } = require('../src/integration/toIngestPayload');
+
+    const rawItems = [
+      {
+        source: 'olx',
+        ad_id: '123',
+        url: 'https://www.olx.pt/d/anuncio/test-ID123.html',
+        title: 'Test property',
+        price: 150000,
+        _status: 'NEW',
+        _first_seen: '2026-03-11T07:00:00Z',
+        _last_seen: '2026-03-11T07:00:00Z',
+        _changed_fields: [],
+      },
+      {
+        source: 'olx',
+        ad_id: '456',
+        url: 'https://www.olx.pt/d/anuncio/test-ID456.html',
+        title: 'Updated property',
+        price: 200000,
+        _status: 'UPDATED',
+        _first_seen: '2026-03-10T07:00:00Z',
+        _last_seen: '2026-03-11T07:00:00Z',
+        _changed_fields: ['price'],
+      },
+    ];
+
+    const payload = realBuild({
+      runId: 'test-run',
+      configId: 'test-cfg',
+      source: 'olx',
+      areaQuery: 'Test area',
+      rawItems,
+      durationMs: 5000,
+      incrementalMeta: { new: 1, updated: 1, unchanged: 3 },
+    });
+
+    // Check item-level annotations
+    assert.equal(payload.items[0].change_status, 'NEW');
+    assert.equal(payload.items[0].first_seen, '2026-03-11T07:00:00Z');
+    assert.equal(payload.items[0].changed_fields, undefined);
+
+    assert.equal(payload.items[1].change_status, 'UPDATED');
+    assert.deepEqual(payload.items[1].changed_fields, ['price']);
+
+    // Check meta-level incremental summary
+    assert.ok(payload.meta.incremental);
+    assert.equal(payload.meta.incremental.new, 1);
+    assert.equal(payload.meta.incremental.updated, 1);
+    assert.equal(payload.meta.incremental.unchanged, 3);
+  });
 })().catch((error) => {
   console.error(error);
   process.exit(1);

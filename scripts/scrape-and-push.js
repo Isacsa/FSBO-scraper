@@ -8,6 +8,7 @@
  *   node scripts/scrape-and-push.js --run-now               # force run all configs
  *   node scripts/scrape-and-push.js --config-id=<uuid>      # run a specific config only
  *   node scripts/scrape-and-push.js --dry-run               # scrape + clean but don't push
+ *   node scripts/scrape-and-push.js --legacy                # disable incremental tracking (push all items)
  *
  * Environment:
  *   APP_API_URL       - Fastify API base URL (required)
@@ -24,6 +25,7 @@ const { pushBatch } = require('../src/integration/pushBatch');
 const { applyPrecisionGate } = require('../src/integration/precisionGate');
 const { runPlatform } = require('../src/core/runPlatform');
 const { dedupeListInMemory } = require('../pipeline/deduplicate');
+const { applyIncremental } = require('../pipeline/incremental');
 
 const defaultDeps = {
   pullConfigs,
@@ -32,6 +34,7 @@ const defaultDeps = {
   applyPrecisionGate,
   runPlatform,
   dedupeListInMemory,
+  applyIncremental,
   randomUUID: () => crypto.randomUUID(),
 };
 
@@ -39,6 +42,7 @@ function parseCliArgs(argv = process.argv.slice(2)) {
   return {
     runNow: argv.includes('--run-now'),
     dryRun: argv.includes('--dry-run'),
+    incremental: !argv.includes('--legacy'),
     configId: (() => {
       const flag = argv.find(a => a.startsWith('--config-id='));
       return flag ? flag.split('=').slice(1).join('=') : null;
@@ -135,6 +139,7 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {})
     dedupeRemoved = 0,
     runStatus = 'COMPLETED',
     errors = [],
+    incrementalMeta = null,
   }) {
     const payload = deps.buildIngestPayload({
       runId,
@@ -147,6 +152,7 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {})
       totalScraped,
       runStatus,
       errors,
+      incrementalMeta,
     });
 
     if (flags.dryRun) {
@@ -290,16 +296,54 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {})
       continue;
     }
 
+    // Incremental tracking: annotate NEW / UPDATED / UNCHANGED
+    let itemsToPush = precision.accepted;
+    let incrementalMeta = null;
+
+    if (flags.incremental) {
+      try {
+        const scopeKey = `${configId}|${platform}`;
+        const result = await deps.applyIncremental(precision.accepted, {
+          scopeKey,
+          stateFile: 'data/incremental_state.json',
+          coverageFull: false,
+        });
+        incrementalMeta = result.meta;
+        itemsToPush = result.items.filter(i => i._status === 'NEW' || i._status === 'UPDATED');
+
+        log('info', `Incremental: ${result.meta.new} new, ${result.meta.updated} updated, ${result.meta.unchanged} unchanged`, {
+          configId,
+          platform,
+          incremental_new: result.meta.new,
+          incremental_updated: result.meta.updated,
+          incremental_unchanged: result.meta.unchanged,
+        });
+      } catch (incErr) {
+        log('warn', `Incremental tracking failed, falling back to full push: ${incErr.message}`, {
+          configId,
+          platform,
+        });
+        itemsToPush = precision.accepted;
+      }
+    }
+
+    if (itemsToPush.length === 0) {
+      log('info', `No new/updated items for ${platform}, skipping push`, { configId, platform });
+      runResults.sourcesSucceeded++;
+      continue;
+    }
+
     // Push to APP Fastify API
     try {
       const { payload } = await publishRun({
         platform,
         runId,
         durationMs,
-        rawItems: precision.accepted,
+        rawItems: itemsToPush,
         totalScraped: deduped.length,
         dedupeRemoved,
         runStatus: 'COMPLETED',
+        incrementalMeta,
       });
 
       runResults.sourcesSucceeded++;
@@ -354,6 +398,7 @@ async function main(runtime = {}) {
   log('info', 'Scrape-and-push starting', {
     runNow: flags.runNow,
     dryRun: flags.dryRun,
+    incremental: flags.incremental,
     configId: flags.configId,
     apiUrl: connOpts.apiUrl,
   });
