@@ -21,11 +21,16 @@ const FORBIDDEN_CATEGORY_PATTERNS = [
 const RENT_ONLY_PATTERNS = [
   /\barrendar\b/i,
   /\barrendo\b/i,
+  /\barrendamento\b/i,
   /\balugar\b/i,
   /\balugo\b/i,
   /\baluguer\b/i,
+  /\baluguel\b/i,
+  /\baluga-se\b/i,
   /\brenda mensal\b/i,
   /\brent\b/i,
+  /\/m[eê]s\b/i,
+  /\bpor\s+m[eê]s\b/i,
 ];
 
 const SALE_HINT_PATTERNS = [
@@ -105,16 +110,44 @@ function extractCandidateText(item) {
 }
 
 function hasForbiddenCategory(item) {
-  const text = extractCandidateText(item);
-  if (!text) return false;
-  return matchesAny(FORBIDDEN_CATEGORY_PATTERNS, text);
+  // Only check property type fields and URL — NOT title/description,
+  // because garagem/quartos frequently appear there as included features (false positive)
+  const typeText = [
+    item?.property?.type,
+    item?.property?.tipology,
+  ]
+    .filter((p) => typeof p === 'string' && p.trim())
+    .join(' ');
+
+  if (matchesAny(FORBIDDEN_CATEGORY_PATTERNS, typeText)) return true;
+
+  // Also check URL path segment (e.g. /garagem/, /quartos/)
+  const urlPath = (() => {
+    try { return new URL(item?.url || '').pathname.toLowerCase(); } catch { return ''; }
+  })();
+  if (matchesAny(FORBIDDEN_CATEGORY_PATTERNS, urlPath)) return true;
+
+  return false;
 }
 
 function isRentOnly(item) {
   const text = `${item?.title || ''} ${item?.description || ''} ${item?.url || ''}`;
-  const hasRentHint = matchesAny(RENT_ONLY_PATTERNS, text);
+  // Also check price string for rent indicators (e.g. "720 €/mês")
+  const priceStr = typeof item?.price === 'string' ? item.price :
+                   typeof item?.price === 'number' ? '' : String(item?.price || '');
+  const fullText = `${text} ${priceStr}`;
+
+  const hasRentHint = matchesAny(RENT_ONLY_PATTERNS, fullText);
   const hasSaleHint = matchesAny(SALE_HINT_PATTERNS, text);
-  return hasRentHint && !hasSaleHint;
+  if (hasRentHint && !hasSaleHint) return true;
+
+  // Price < €2000 on property listings is almost certainly rent in Portugal
+  const numericPrice = parseFloat(String(item?.price || '').replace(/[^\d.,]/g, '').replace(',', '.'));
+  if (numericPrice > 0 && numericPrice < 2000 && !hasSaleHint) {
+    return true;
+  }
+
+  return false;
 }
 
 function isPlaceholderAdvertiserName(name) {
@@ -127,9 +160,8 @@ function hasPositiveFsboEvidence(item) {
   if (fsboDecision === 'fsbo') return true;
   if (typeof item?.fsbo_score === 'number' && item.fsbo_score >= 60) return true;
   if (typeof item?.signals?.fsbo_score === 'number' && item.signals.fsbo_score >= 60) return true;
-  if (item?.advertiser?.is_agency === false && !isPlaceholderAdvertiserName(item?.advertiser?.name)) {
-    return true;
-  }
+  // is_agency explicitly false is a strong signal even with a placeholder name
+  if (item?.advertiser?.is_agency === false) return true;
   const text = `${item?.title || ''} ${item?.description || ''}`;
   return matchesAny(POSITIVE_FSBO_PATTERNS, text);
 }
@@ -164,6 +196,12 @@ function classifyPrecisionDecision(item, source) {
   }
 
   if (fsboDecision === 'uncertain') {
+    // High-scoring uncertain items: score evidence outweighs ambiguity
+    const score = typeof item?.fsbo_score === 'number' ? item.fsbo_score
+                : typeof item?.signals?.fsbo_score === 'number' ? item.signals.fsbo_score : null;
+    if (score !== null && score >= 60) {
+      return { decision: 'accept', reasons: ['uncertain_high_score'] };
+    }
     reasons.push('uncertain_fsbo_decision');
     return { decision: 'uncertain', reasons };
   }

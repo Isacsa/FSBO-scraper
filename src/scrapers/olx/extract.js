@@ -244,20 +244,80 @@ async function extractLocation(page) {
       };
     }
     
-    // Método 4: Procurar em meta tags
+    // Método 4: __NEXT_DATA__ (Next.js hydration — mais estável que classes CSS)
+    const nextDataLocation = await page.evaluate(() => {
+      try {
+        const el = document.getElementById('__NEXT_DATA__');
+        if (!el) return null;
+        const data = JSON.parse(el.textContent);
+        // Percorrer props para encontrar dados do anúncio
+        const ad = data?.props?.pageProps?.ad ||
+                   data?.props?.pageProps?.adData ||
+                   data?.props?.pageProps?.listing;
+        if (!ad) return null;
+        // location pode ser string ou objeto
+        const loc = ad.location || ad.locationLabel || ad.city;
+        if (typeof loc === 'string' && loc.length > 2) return loc;
+        if (loc && typeof loc === 'object') {
+          const parts = [loc.city, loc.region, loc.district, loc.regionLabel]
+            .filter(Boolean);
+          return parts.length > 0 ? parts.join(', ') : null;
+        }
+        return null;
+      } catch (e) { return null; }
+    });
+    if (nextDataLocation) {
+      const parts = nextDataLocation.split(',').map(p => p.trim()).filter(Boolean);
+      return { raw: nextDataLocation, parts: parts.length > 0 ? parts : [nextDataLocation] };
+    }
+
+    // Método 5: JSON-LD PostalAddress
+    const jsonLdLocation = await page.evaluate(() => {
+      try {
+        const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+        for (const script of scripts) {
+          const data = JSON.parse(script.textContent);
+          // Procurar PostalAddress em qualquer nível
+          function findAddress(obj) {
+            if (!obj || typeof obj !== 'object') return null;
+            if (obj['@type'] === 'PostalAddress') {
+              return [obj.addressLocality, obj.addressRegion, obj.addressCountry]
+                .filter(Boolean).join(', ');
+            }
+            for (const val of Object.values(obj)) {
+              const found = findAddress(val);
+              if (found) return found;
+            }
+            return null;
+          }
+          const addr = findAddress(Array.isArray(data) ? { items: data } : data);
+          if (addr) return addr;
+        }
+        return null;
+      } catch (e) { return null; }
+    });
+    if (jsonLdLocation) {
+      const parts = jsonLdLocation.split(',').map(p => p.trim()).filter(Boolean);
+      return { raw: jsonLdLocation, parts: parts.length > 0 ? parts : [jsonLdLocation] };
+    }
+
+    // Método 6: Meta tags og:locality / breadcrumb
     const metaLocation = await page.evaluate(() => {
       const meta = document.querySelector('meta[property="og:locality"]') ||
                    document.querySelector('meta[name="locality"]');
-      if (meta) {
-        return meta.getAttribute('content')?.trim();
-      }
-      return null;
+      if (meta) return meta.getAttribute('content')?.trim();
+      // Breadcrumb frequentemente contém localização
+      const breadcrumbs = document.querySelectorAll('[class*="breadcrumb"] a, nav[aria-label*="bread"] a');
+      const parts = Array.from(breadcrumbs)
+        .map(a => a.textContent.trim())
+        .filter(t => t && t.length > 2 && !/imóveis|início|home|portugal/i.test(t));
+      return parts.length > 0 ? parts.join(', ') : null;
     });
-    
+
     if (metaLocation) {
-      return { raw: metaLocation, parts: [metaLocation] };
+      return { raw: metaLocation, parts: metaLocation.split(',').map(p => p.trim()).filter(Boolean) };
     }
-    
+
     return null;
   } catch (error) {
     return null;

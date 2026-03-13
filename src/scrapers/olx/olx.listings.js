@@ -156,12 +156,15 @@ async function extractListingUrls(page) {
     // Seletores comuns do OLX para anúncios
     const adSelectors = [
       'a[data-cy="listing-ad-title"]',
+      'a[href*="/d/anuncio/"]',
+      '[data-cy="l-card"] a[href*="/d/anuncio/"]',
       'a[href*="/ad/"]',
       'a[href*="/anuncio/"]',
       'a[data-testid="ad-card"]',
+      'article a[href*="/d/anuncio/"]',
       'article a[href*="/ad/"]',
       'article a[href*="/anuncio/"]',
-      '.css-1sw7q4x a', // Seletor comum do OLX
+      '.css-1sw7q4x a',
       '[data-cy="l-card"] a'
     ];
     
@@ -181,10 +184,34 @@ async function extractListingUrls(page) {
     scripts.forEach(script => {
       try {
         const data = JSON.parse(script.textContent);
+
+        // Structured: parse AggregateOffer -> Offer[] with url fields
+        function extractUrlsFromObj(obj) {
+          if (!obj || typeof obj !== 'object') return;
+          if (typeof obj.url === 'string' && obj.url.includes('olx.pt') &&
+              (obj.url.includes('/d/anuncio/') || obj.url.includes('/anuncio/') || obj.url.includes('/ad/'))) {
+            entries.push({ href: obj.url, cardText: obj.name || '' });
+          }
+          if (Array.isArray(obj.offers)) {
+            obj.offers.forEach(o => extractUrlsFromObj(o));
+          }
+          if (obj.offers && typeof obj.offers === 'object' && !Array.isArray(obj.offers)) {
+            extractUrlsFromObj(obj.offers);
+          }
+          if (Array.isArray(obj.itemListElement)) {
+            obj.itemListElement.forEach(o => extractUrlsFromObj(o.item || o));
+          }
+        }
+
+        if (Array.isArray(data)) {
+          data.forEach(d => extractUrlsFromObj(d));
+        } else {
+          extractUrlsFromObj(data);
+        }
+
+        // Fallback: regex for URLs in the JSON string
         const dataStr = JSON.stringify(data);
-        
-        // Procurar URLs de anúncios no JSON
-        const urlMatches = dataStr.match(/https?:\/\/[^"'\s]*olx\.pt[^"'\s]*\/ad[^"'\s]*/g);
+        const urlMatches = dataStr.match(/https?:\/\/[^"'\s]*olx\.pt[^"'\s]*\/(?:d\/anuncio|anuncio|ad)\/[^"'\s]*/g);
         if (urlMatches) {
           urlMatches.forEach(url => {
             entries.push({ href: url, cardText: '' });

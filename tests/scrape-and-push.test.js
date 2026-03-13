@@ -49,7 +49,7 @@ function parseLogLines(stderrCapture) {
     };
 
     const acceptedItems = [
-      { canonical_url: 'https://www.olx.pt/d/anuncio/apartamento-t2-ID123.html', title: 'Accepted item' },
+      { url: 'https://www.olx.pt/d/anuncio/apartamento-t2-ID123.html', title: 'Accepted item' },
     ];
 
     const result = await main({
@@ -120,9 +120,16 @@ function parseLogLines(stderrCapture) {
             },
           };
         },
+        async applyIncremental(items) {
+          return {
+            items: items.map(i => ({ ...i, _status: 'NEW' })),
+            meta: { new: items.length, updated: 0, unchanged: 0, removed: 0 },
+          };
+        },
         buildIngestPayload(input) {
           calls.buildIngestPayload++;
-          assert.deepEqual(input.rawItems, acceptedItems);
+          assert.equal(input.rawItems.length, acceptedItems.length);
+          assert.equal(input.rawItems[0].url, acceptedItems[0].url);
           assert.equal(input.totalScraped, 2);
           return {
             run_id: input.runId,
@@ -207,6 +214,12 @@ function parseLogLines(stderrCapture) {
               rejected_precision: 0,
               uncertain_blocked: 0,
             },
+          };
+        },
+        async applyIncremental(items) {
+          return {
+            items: items.map(i => ({ ...i, _status: 'NEW' })),
+            meta: { new: items.length, updated: 0, unchanged: 0, removed: 0 },
           };
         },
         buildIngestPayload(input) {

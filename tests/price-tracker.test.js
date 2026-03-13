@@ -236,7 +236,7 @@ test('stable prices — no drops', () => {
   assert.strictEqual(drops.length, 0);
 });
 
-test('drop of 14.9% — not flagged', () => {
+test('drop of 14.9% — not flagged by cumulative threshold but flagged as step drop', () => {
   const state = {
     listings: {
       'https://example.com/1': {
@@ -251,7 +251,28 @@ test('drop of 14.9% — not flagged', () => {
       },
     },
   };
-  const drops = detectDrops(state, 0.15);
+  // 14.9% step drop >= 3% step threshold → flagged
+  const drops = detectDrops(state, 0.15, 0.03);
+  assert.strictEqual(drops.length, 1);
+  assert.strictEqual(drops[0].metrics.dropType, 'step');
+});
+
+test('drop of 2% — not flagged (below both thresholds)', () => {
+  const state = {
+    listings: {
+      'https://example.com/1': {
+        first_seen_price: 100000,
+        current_price: 98000,
+        first_seen_at: '2026-01-01T00:00:00Z',
+        last_seen_at: '2026-02-01T00:00:00Z',
+        price_history: [
+          { price: 100000, seen_at: '2026-01-01T00:00:00Z' },
+          { price: 98000, seen_at: '2026-02-01T00:00:00Z' },
+        ],
+      },
+    },
+  };
+  const drops = detectDrops(state, 0.15, 0.03);
   assert.strictEqual(drops.length, 0);
 });
 
@@ -422,6 +443,79 @@ test('computeDropMetrics returns daysSinceFirst', () => {
   assert.strictEqual(m.daysSinceFirst, 54);
 });
 
+test('step drop >= stepThreshold — flagged as step, drop_type=step', () => {
+  // First=300k, intermediate=295k (stable), then current=280k (-5.1% step, <15% cumulative)
+  const entry = {
+    first_seen_price: 300000,
+    current_price: 280000,
+    first_seen_at: '2026-01-01T00:00:00Z',
+    last_seen_at: '2026-03-01T00:00:00Z',
+    price_history: [
+      { price: 300000, seen_at: '2026-01-01T00:00:00Z' },
+      { price: 295000, seen_at: '2026-02-01T00:00:00Z' },
+      { price: 280000, seen_at: '2026-03-01T00:00:00Z' },
+    ],
+  };
+  const m = computeDropMetrics(entry, 0.15, 0.03);
+  assert.ok(m.hasDrop);
+  assert.strictEqual(m.dropType, 'step');
+  assert.ok(m.stepDropPercent > 5);
+  assert.strictEqual(m.prevPrice, 295000);
+});
+
+test('both cumulative and step drop — drop_type=both', () => {
+  const entry = {
+    first_seen_price: 300000,
+    current_price: 240000,
+    first_seen_at: '2026-01-01T00:00:00Z',
+    last_seen_at: '2026-03-01T00:00:00Z',
+    price_history: [
+      { price: 300000, seen_at: '2026-01-01T00:00:00Z' },
+      { price: 260000, seen_at: '2026-02-01T00:00:00Z' },
+      { price: 240000, seen_at: '2026-03-01T00:00:00Z' },
+    ],
+  };
+  const m = computeDropMetrics(entry, 0.15, 0.03);
+  assert.ok(m.hasDrop);
+  assert.strictEqual(m.dropType, 'both');
+});
+
+test('cumulative >= threshold but no step drop — drop_type=cumulative', () => {
+  // Price went down significantly from first, but recovered and barely dropped
+  const entry = {
+    first_seen_price: 300000,
+    current_price: 252000,
+    first_seen_at: '2026-01-01T00:00:00Z',
+    last_seen_at: '2026-03-01T00:00:00Z',
+    price_history: [
+      { price: 300000, seen_at: '2026-01-01T00:00:00Z' },
+      { price: 254000, seen_at: '2026-02-01T00:00:00Z' },
+      { price: 252000, seen_at: '2026-03-01T00:00:00Z' },
+    ],
+  };
+  // cumulative: (300k-252k)/300k = 16% >= 15% ✓
+  // step: (254k-252k)/254k = 0.8% < 3% ✗
+  const m = computeDropMetrics(entry, 0.15, 0.03);
+  assert.ok(m.hasDrop);
+  assert.strictEqual(m.dropType, 'cumulative');
+});
+
+test('step drop below stepThreshold — not flagged', () => {
+  const entry = {
+    first_seen_price: 300000,
+    current_price: 294000,
+    first_seen_at: '2026-01-01T00:00:00Z',
+    last_seen_at: '2026-02-01T00:00:00Z',
+    price_history: [
+      { price: 300000, seen_at: '2026-01-01T00:00:00Z' },
+      { price: 294000, seen_at: '2026-02-01T00:00:00Z' },
+    ],
+  };
+  // step: 2% < 3% threshold, cumulative 2% < 15% → no drop
+  const m = computeDropMetrics(entry, 0.15, 0.03);
+  assert.strictEqual(m, null);
+});
+
 // ── salesFilter ──────────────────────────────────────────────────────────────
 
 const { filterSalesOnly } = require('../src/price-tracker/salesFilter');
@@ -511,13 +605,16 @@ test('builds valid payload', () => {
   assert.strictEqual(payload.events[0].price_data.drop_percent, 16);
   assert.strictEqual(payload.events[0].price_data.first_seen_price, 250000);
   assert.strictEqual(payload.events[0].price_data.current_price, 210000);
+  assert.ok('drop_type' in payload.events[0].price_data);
+  assert.ok('step_drop_percent' in payload.events[0].price_data);
+  assert.ok('prev_price' in payload.events[0].price_data);
   assert.strictEqual(payload.events[0].location.district, 'Porto');
   assert.strictEqual(payload.meta.total_tracked, 100);
 });
 
 // ── Orchestrator integration ─────────────────────────────────────────────────
 
-const { main, parseCliArgs, getDropThreshold, shouldRunConfig } = require('../scripts/price-tracker');
+const { main, parseCliArgs, getDropThreshold, getStepThreshold, shouldRunConfig } = require('../scripts/price-tracker');
 
 // Helper: create a fake withPriceStateLock that uses the given deps
 function fakeWithPriceStateLock(deps) {
@@ -537,14 +634,16 @@ test('parseCliArgs: defaults', () => {
   assert.strictEqual(args.dryRun, false);
   assert.strictEqual(args.configId, null);
   assert.strictEqual(args.dropThreshold, null);
+  assert.strictEqual(args.stepThreshold, null);
 });
 
 test('parseCliArgs: all flags', () => {
-  const args = parseCliArgs(['--run-now', '--dry-run', '--config-id=abc-123', '--drop-threshold=0.20']);
+  const args = parseCliArgs(['--run-now', '--dry-run', '--config-id=abc-123', '--drop-threshold=0.20', '--step-threshold=0.05']);
   assert.strictEqual(args.runNow, true);
   assert.strictEqual(args.dryRun, true);
   assert.strictEqual(args.configId, 'abc-123');
   assert.strictEqual(args.dropThreshold, 0.20);
+  assert.strictEqual(args.stepThreshold, 0.05);
 });
 
 test('getDropThreshold: CLI flag takes precedence', () => {
@@ -557,6 +656,18 @@ test('getDropThreshold: env var fallback', () => {
 
 test('getDropThreshold: default 0.15', () => {
   assert.strictEqual(getDropThreshold({ dropThreshold: null }, {}), 0.15);
+});
+
+test('getStepThreshold: CLI flag takes precedence', () => {
+  assert.strictEqual(getStepThreshold({ stepThreshold: 0.05 }, {}), 0.05);
+});
+
+test('getStepThreshold: env var fallback', () => {
+  assert.strictEqual(getStepThreshold({ stepThreshold: null }, { PRICE_TRACKER_STEP_THRESHOLD: '0.10' }), 0.10);
+});
+
+test('getStepThreshold: default 0.03', () => {
+  assert.strictEqual(getStepThreshold({ stepThreshold: null }, {}), 0.03);
 });
 
 test('shouldRunConfig: runNow=true always runs', () => {

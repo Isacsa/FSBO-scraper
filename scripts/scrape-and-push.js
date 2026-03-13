@@ -26,6 +26,7 @@ const { applyPrecisionGate } = require('../src/integration/precisionGate');
 const { runPlatform } = require('../src/core/runPlatform');
 const { dedupeListInMemory } = require('../pipeline/deduplicate');
 const { applyIncremental } = require('../pipeline/incremental');
+const { calculateFsboScores } = require('../pipeline/fsboScore');
 
 const defaultDeps = {
   pullConfigs,
@@ -35,6 +36,7 @@ const defaultDeps = {
   runPlatform,
   dedupeListInMemory,
   applyIncremental,
+  calculateFsboScores,
   randomUUID: () => crypto.randomUUID(),
 };
 
@@ -248,7 +250,10 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {})
     const { unique: deduped, duplicates } = deps.dedupeListInMemory(items);
     const dedupeRemoved = duplicates ? duplicates.length : 0;
 
-    const precision = deps.applyPrecisionGate(deduped, platform);
+    // FSBO scoring — must run before precision gate so score/decision are available
+    const scored = deps.calculateFsboScores(deduped);
+
+    const precision = deps.applyPrecisionGate(scored, platform);
 
     log('info', `Scraped ${items.length} items (${dedupeRemoved} dupes removed) from ${platform}`, {
       configId,

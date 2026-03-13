@@ -8,13 +8,15 @@
  *   node scripts/price-tracker.js --run-now                # force run
  *   node scripts/price-tracker.js --dry-run                # no push, output to stdout
  *   node scripts/price-tracker.js --config-id=<uuid>       # single config
- *   node scripts/price-tracker.js --drop-threshold=0.20    # override threshold
+ *   node scripts/price-tracker.js --drop-threshold=0.20    # override cumulative threshold
+ *   node scripts/price-tracker.js --step-threshold=0.05   # override step threshold
  *
  * Environment:
- *   APP_API_URL                    - Fastify API base URL (required)
- *   SCRAPER_API_KEY                - API key (required)
- *   SCRAPER_TENANT_ID              - tenant UUID (required)
- *   PRICE_TRACKER_DROP_THRESHOLD   - default 0.15 (optional)
+ *   APP_API_URL                     - Fastify API base URL (required)
+ *   SCRAPER_API_KEY                 - API key (required)
+ *   SCRAPER_TENANT_ID               - tenant UUID (required)
+ *   PRICE_TRACKER_DROP_THRESHOLD    - cumulative threshold, default 0.15 (optional)
+ *   PRICE_TRACKER_STEP_THRESHOLD    - step threshold, default 0.03 (optional)
  */
 
 const path = require('path');
@@ -33,6 +35,7 @@ const { build: buildPriceDropPayload } = require('../src/price-tracker/toPriceDr
 const { pushPriceDrops } = require('../src/price-tracker/pushPriceDrops');
 
 const DEFAULT_DROP_THRESHOLD = 0.15;
+const DEFAULT_STEP_THRESHOLD = 0.03;
 const SOURCES = ['olx', 'imovirtual', 'custojusto', 'casasapo', 'idealista'];
 
 const defaultDeps = {
@@ -63,6 +66,12 @@ function parseCliArgs(argv = process.argv.slice(2)) {
     })(),
     dropThreshold: (() => {
       const flag = argv.find(a => a.startsWith('--drop-threshold='));
+      if (!flag) return null;
+      const val = parseFloat(flag.split('=')[1]);
+      return isNaN(val) ? null : val;
+    })(),
+    stepThreshold: (() => {
+      const flag = argv.find(a => a.startsWith('--step-threshold='));
       if (!flag) return null;
       const val = parseFloat(flag.split('=')[1]);
       return isNaN(val) ? null : val;
@@ -109,6 +118,15 @@ function getDropThreshold(flags, env) {
   return DEFAULT_DROP_THRESHOLD;
 }
 
+function getStepThreshold(flags, env) {
+  if (flags.stepThreshold !== null) return flags.stepThreshold;
+  if (env.PRICE_TRACKER_STEP_THRESHOLD) {
+    const val = parseFloat(env.PRICE_TRACKER_STEP_THRESHOLD);
+    if (!isNaN(val)) return val;
+  }
+  return DEFAULT_STEP_THRESHOLD;
+}
+
 async function scrapeSource(platform, url, options, deps) {
   const startMs = Date.now();
   try {
@@ -136,7 +154,7 @@ async function scrapeSource(platform, url, options, deps) {
   }
 }
 
-async function processSource({ platform, url, config, connOpts, threshold, deps, flags, log, stdout, now }) {
+async function processSource({ platform, url, config, connOpts, threshold, stepThreshold, deps, flags, log, stdout, now }) {
   const runId = deps.randomUUID();
   const configId = config.id;
   const options = config.options || {};
@@ -169,7 +187,7 @@ async function processSource({ platform, url, config, connOpts, threshold, deps,
   const stateResult = await deps.withPriceStateLock(configId, (state) => {
     const upsertResult = deps.upsertListings(state, salesOnly, now);
     const prunedCount = deps.pruneStale(state, 90);
-    const drops = deps.detectDrops(state, threshold);
+    const drops = deps.detectDrops(state, threshold, stepThreshold);
     return { ...upsertResult, prunedCount, drops, totalTracked: Object.keys(state.listings).length };
   });
   const { newCount, priceChanged, prunedCount, drops } = stateResult;
@@ -250,6 +268,7 @@ async function main(runtime = {}) {
   const connOpts = getConnectionOptions(env);
   const log = createLogger(stderr);
   const threshold = getDropThreshold(flags, env);
+  const stepThreshold = getStepThreshold(flags, env);
 
   // Validate environment
   if (!connOpts.apiUrl) {
@@ -273,6 +292,7 @@ async function main(runtime = {}) {
     dryRun: flags.dryRun,
     configId: flags.configId,
     dropThreshold: threshold,
+    stepThreshold,
     apiUrl: connOpts.apiUrl,
   });
 
@@ -341,6 +361,7 @@ async function main(runtime = {}) {
           config,
           connOpts,
           threshold,
+          stepThreshold,
           deps,
           flags,
           log,
@@ -425,6 +446,7 @@ module.exports = {
   parseCliArgs,
   shouldRunConfig,
   getDropThreshold,
+  getStepThreshold,
   scrapeSource,
   processSource,
   main,
