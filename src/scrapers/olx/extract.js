@@ -250,12 +250,33 @@ async function extractLocation(page) {
         const el = document.getElementById('__NEXT_DATA__');
         if (!el) return null;
         const data = JSON.parse(el.textContent);
-        // Percorrer props para encontrar dados do anúncio
-        const ad = data?.props?.pageProps?.ad ||
-                   data?.props?.pageProps?.adData ||
-                   data?.props?.pageProps?.listing;
-        if (!ad) return null;
-        // location pode ser string ou objeto
+        const pp = data?.props?.pageProps || {};
+
+        // Tentar vários caminhos possíveis para o anúncio
+        const ad = pp.ad || pp.adData || pp.listing ||
+                   pp.serverData?.adItem || pp.adItem ||
+                   pp.initialProps?.adItem || pp.data?.ad;
+        if (!ad) {
+          // Último recurso: procurar 'location' recursivamente em pageProps
+          function findLocation(obj, depth = 0) {
+            if (depth > 4 || !obj || typeof obj !== 'object') return null;
+            const loc = obj.location || obj.locationLabel || obj.city;
+            if (typeof loc === 'string' && loc.length > 2 &&
+                !/^\d+$/.test(loc.trim())) return loc;
+            if (loc && typeof loc === 'object') {
+              const parts = [loc.city, loc.region, loc.district]
+                .filter(s => typeof s === 'string' && s.length > 1);
+              if (parts.length > 0) return parts.join(', ');
+            }
+            for (const v of Object.values(obj)) {
+              const found = findLocation(v, depth + 1);
+              if (found) return found;
+            }
+            return null;
+          }
+          return findLocation(pp);
+        }
+
         const loc = ad.location || ad.locationLabel || ad.city;
         if (typeof loc === 'string' && loc.length > 2) return loc;
         if (loc && typeof loc === 'object') {
@@ -271,22 +292,37 @@ async function extractLocation(page) {
       return { raw: nextDataLocation, parts: parts.length > 0 ? parts : [nextDataLocation] };
     }
 
-    // Método 5: JSON-LD PostalAddress
+    // Método 5: JSON-LD — areaServed.City (OLX), PostalAddress, Place
     const jsonLdLocation = await page.evaluate(() => {
       try {
         const scripts = document.querySelectorAll('script[type="application/ld+json"]');
         for (const script of scripts) {
           const data = JSON.parse(script.textContent);
-          // Procurar PostalAddress em qualquer nível
           function findAddress(obj) {
             if (!obj || typeof obj !== 'object') return null;
+            // OLX uses offers.areaServed with @type=City
+            if (obj['@type'] === 'City' || obj['@type'] === 'Place') {
+              if (typeof obj.name === 'string' && obj.name.length > 1) return obj.name;
+            }
             if (obj['@type'] === 'PostalAddress') {
-              return [obj.addressLocality, obj.addressRegion, obj.addressCountry]
-                .filter(Boolean).join(', ');
+              return [obj.addressLocality, obj.addressRegion]
+                .filter(Boolean).join(', ') || null;
+            }
+            // Check areaServed directly (Offer pattern)
+            if (obj.areaServed) {
+              const as = obj.areaServed;
+              if (typeof as.name === 'string' && as.name.length > 1) return as.name;
             }
             for (const val of Object.values(obj)) {
-              const found = findAddress(val);
-              if (found) return found;
+              if (Array.isArray(val)) {
+                for (const item of val) {
+                  const found = findAddress(item);
+                  if (found) return found;
+                }
+              } else {
+                const found = findAddress(val);
+                if (found) return found;
+              }
             }
             return null;
           }
