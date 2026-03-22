@@ -1,6 +1,6 @@
 const assert = require('assert');
 
-const { main } = require('../scripts/scrape-and-push');
+const { main, assessExtractionQuality } = require('../scripts/scrape-and-push');
 
 console.log('\nScrape-and-push orchestrator tests');
 
@@ -518,6 +518,45 @@ function parseLogLines(stderrCapture) {
     assert.equal(payload.meta.incremental.new, 1);
     assert.equal(payload.meta.incremental.updated, 1);
     assert.equal(payload.meta.incremental.unchanged, 3);
+  });
+  // --- Extraction Quality Tests ---
+
+  await runTest('assessExtractionQuality returns OK for good data', async () => {
+    const items = [
+      { title: 'Apt T2', price: '200000', location: { district: 'Porto', municipality: 'Porto' }, property: { area_useful: '80' }, photos: ['a.jpg'] },
+      { title: 'Moradia', price: '350000', location: { district: 'Porto', municipality: 'Gaia' }, property: { area_total: '120' }, photos: ['b.jpg'] },
+    ];
+    const q = assessExtractionQuality(items);
+    assert.equal(q.verdict, 'OK');
+    assert.equal(q.fields_coverage.title, 100);
+    assert.equal(q.fields_coverage.price, 100);
+    assert.equal(q.item_count, 2);
+  });
+
+  await runTest('assessExtractionQuality returns DEGRADED when title/price mostly missing', async () => {
+    const items = [
+      { title: null, price: null, location: { district: 'Porto' }, property: {}, photos: [] },
+      { title: null, price: '100000', location: { district: 'Porto' }, property: {}, photos: [] },
+      { title: 'ok', price: null, location: { district: 'Porto' }, property: {}, photos: [] },
+    ];
+    const q = assessExtractionQuality(items);
+    assert.equal(q.verdict, 'DEGRADED');
+    assert.ok(q.fields_coverage.title < 50);
+    assert.ok(q.fields_coverage.price < 50);
+  });
+
+  await runTest('assessExtractionQuality returns DEGRADED when no location at all', async () => {
+    const items = [
+      { title: 'A', price: '200000', location: { district: null, municipality: null }, property: {}, photos: [] },
+      { title: 'B', price: '300000', location: {}, property: {}, photos: [] },
+    ];
+    const q = assessExtractionQuality(items);
+    assert.equal(q.verdict, 'DEGRADED');
+  });
+
+  await runTest('assessExtractionQuality returns EMPTY for empty array', async () => {
+    const q = assessExtractionQuality([]);
+    assert.equal(q.verdict, 'EMPTY');
   });
 })().catch((error) => {
   console.error(error);

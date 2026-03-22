@@ -1,10 +1,22 @@
-# Use Node.js LTS
+# ── Stage 1: Install dependencies ──
+FROM node:18-slim AS deps
+
+WORKDIR /app
+
+COPY package*.json ./
+
+# Install production dependencies only (skip optional express/cors)
+RUN npm install --omit=optional --ignore-scripts
+
+# Install Playwright browsers
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN npx playwright install chromium
+
+# ── Stage 2: Production image ──
 FROM node:18-slim
 
-# Instalar dependências do sistema necessárias para Playwright
-RUN apt-get update && apt-get install -y \
-    wget \
-    gnupg \
+# System dependencies for Playwright Chromium
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     fonts-liberation \
     libasound2 \
@@ -29,26 +41,20 @@ RUN apt-get update && apt-get install -y \
     libvulkan1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Criar diretório da aplicação
 WORKDIR /app
 
-# Copiar package.json e package-lock.json (se existir)
-COPY package*.json ./
+# Copy dependencies and browser from build stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /ms-playwright /ms-playwright
 
-# Instalar dependências
-RUN npm install
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV NODE_ENV=production
 
-# Instalar browsers do Playwright
-RUN npx playwright install chromium
-RUN npx playwright install-deps chromium
-
-# Copiar código da aplicação
+# Copy application code
 COPY . .
 
-# Variável de ambiente para Playwright
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+# Ensure data directories exist for price state and incremental tracking
+RUN mkdir -p data/price-history
 
-# Production orchestrator (scrape-and-push)
+# Production orchestrator
 CMD ["node", "scripts/scrape-and-push.js"]
-
-

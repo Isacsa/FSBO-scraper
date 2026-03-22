@@ -14,7 +14,7 @@
     "lobstr:squids": "node scripts/list-lobstr-squids.js",
     "lobstr:test": "node scripts/test-lobstr-connection.js",
     "analyze": "node scripts/analyze-valuations.js",
-    "daily": "node scripts/scrape-and-push.js --run-now && node scripts/price-tracker.js --run-now"
+    "daily": "node scripts/scrape-and-push.js --run-now; SCRAPE_EXIT=$?; node scripts/price-tracker.js --run-now; PRICE_EXIT=$?; exit $(( SCRAPE_EXIT > PRICE_EXIT ? SCRAPE_EXIT : PRICE_EXIT ))"
   },
   "keywords": [
     "scraper",
@@ -27,11 +27,13 @@
   "license": "MIT",
   "dependencies": {
     "axios": "^1.13.2",
-    "cors": "^2.8.5",
     "dotenv": "^17.3.1",
-    "express": "^4.18.2",
     "playwright": "^1.40.0",
     "playwright-extra": "^4.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2"
+  },
+  "optionalDependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
   }
 }

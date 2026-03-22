@@ -55,6 +55,10 @@ function toIngestItem(rawItem, source) {
       : (typeof item.signals?.fsbo_score === 'number' ? item.signals.fsbo_score : null),
     fingerprint: item.fingerprint || item._fingerprint || null,
     signals: item.signals && typeof item.signals === 'object' ? item.signals : null,
+    // Valuation data (when present)
+    valuation: item._valuation && typeof item._valuation === 'object' ? item._valuation : null,
+    // Price insights from price-tracker history (when present)
+    price_insights: item._price_insights && typeof item._price_insights === 'object' ? item._price_insights : null,
     // Incremental tracking metadata (when present)
     ...(item._status ? {
       change_status: item._status,
@@ -93,6 +97,7 @@ function buildIngestPayload({
   runStatus = 'COMPLETED',
   errors = [],
   incrementalMeta = null,
+  extractionQuality = null,
 }) {
   const items = rawItems.map(item => toIngestItem(item, source));
 
@@ -116,6 +121,9 @@ function buildIngestPayload({
           updated: incrementalMeta.updated,
           unchanged: incrementalMeta.unchanged,
         },
+      } : {}),
+      ...(extractionQuality ? {
+        extraction_quality: extractionQuality,
       } : {}),
     },
   };

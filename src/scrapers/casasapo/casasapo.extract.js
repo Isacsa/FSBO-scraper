@@ -10,7 +10,13 @@ const { createBrowser, createPage, navigateWithRetry, randomDelay, slowScroll, c
  */
 async function extractListingUrls(page, options = {}) {
   const filterPrivateOnly = options.filterPrivateOnly !== false;
-  await randomDelay(2000, 3000);
+
+  // Wait for property cards to appear (SPA loads content dynamically)
+  try {
+    await page.waitForSelector('.property', { timeout: 15000 });
+  } catch (_) {
+    console.log('[CasaSapo Extract] ⚠️  No .property cards found, trying scroll...');
+  }
 
   // Scroll para carregar lazy-load
   for (let i = 0; i < 5; i++) {
@@ -35,23 +41,32 @@ async function extractListingUrls(page, options = {}) {
       if (!href) return false;
       
       // Deve conter /comprar- ou /arrendar- seguido de tipo de imóvel
-      const hasPropertyType = (href.includes('/comprar-apartamento') || 
-                               href.includes('/comprar-moradia') || 
+      const hasPropertyType = (href.includes('/comprar-apartamento') ||
+                               href.includes('/comprar-moradia') ||
                                href.includes('/comprar-casa') ||
                                href.includes('/comprar-terreno') ||
                                href.includes('/comprar-loja') ||
+                               href.includes('/comprar-quinta') ||
+                               href.includes('/comprar-armazem') ||
+                               href.includes('/comprar-garagem') ||
+                               href.includes('/comprar-escritorio') ||
                                href.includes('/arrendar-apartamento') ||
-                               href.includes('/arrendar-moradia')) &&
+                               href.includes('/arrendar-moradia') ||
+                               href.includes('/arrendar-casa')) &&
                                !href.includes('/comprar-apartamentos/') && // listagem
-                               !href.includes('/comprar-moradias/'); // listagem
+                               !href.includes('/comprar-moradias/') &&     // listagem
+                               !href.includes('/comprar-casas/') &&        // listagem
+                               !href.includes('/comprar-terrenos/');        // listagem
       
       // Deve terminar em .html OU ter UUID no meio
       const hasId = href.endsWith('.html') ||
                    href.match(/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/);
       
-      // NÃO deve ser URL de listagem
+      // NÃO deve ser URL de listagem (plural forms)
       const isListing = href.includes('/comprar-apartamentos/') ||
                        href.includes('/comprar-moradias/') ||
+                       href.includes('/comprar-casas/') ||
+                       href.includes('/comprar-terrenos/') ||
                        href.includes('/arrendar-apartamentos/') ||
                        href.includes('/arrendar-moradias/') ||
                        href.includes('/es-es/') ||
@@ -159,10 +174,18 @@ async function extractAllListingUrls(listingUrl, options = {}) {
     console.log(`[CasaSapo Extract] 📄 Carregando página ${currentPage}...`);
     await navigateWithRetry(page, listingUrl, { timeout });
     await randomDelay(3000, 5000);
-    
-    // Fechar popups
-    await closePopupsAndOverlays(page);
-    await randomDelay(1000, 2000);
+
+    // Fechar popups — cookie consent may trigger a navigation/reload on CasaSapo
+    try {
+      await closePopupsAndOverlays(page);
+      // Wait for any navigation triggered by cookie consent to settle
+      await page.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {});
+    } catch (_) {
+      // Navigation may destroy context; re-navigate if needed
+      console.log('[CasaSapo Extract] ⚠️  Re-navigating after popup handling...');
+      await navigateWithRetry(page, listingUrl, { timeout });
+    }
+    await randomDelay(2000, 3000);
     
     while (true) {
       // Extrair URLs desta página

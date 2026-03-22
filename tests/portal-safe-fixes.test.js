@@ -129,6 +129,76 @@ async function runTest(name, fn) {
       'https://www.imovirtual.com/pt/anuncio/teste-ID123.html'
     );
   });
+  // --- Area from Description Tests ---
+  const { extractAreaFromDescription, cleanItem } = require('../src/integration/dataCleaner');
+
+  await runTest('extractAreaFromDescription: "120m2"', async () => {
+    const r = extractAreaFromDescription('Moradia com 120m2 e garagem');
+    assert.ok(r);
+    assert.equal(r.area, 120);
+    assert.equal(r.source, 'description');
+  });
+
+  await runTest('extractAreaFromDescription: "80 m²"', async () => {
+    const r = extractAreaFromDescription('Apartamento com 80 m² remodelado');
+    assert.ok(r);
+    assert.equal(r.area, 80);
+  });
+
+  await runTest('extractAreaFromDescription: "área útil: 65m2"', async () => {
+    const r = extractAreaFromDescription('O imóvel tem área útil: 65m2, cozinha equipada');
+    assert.ok(r);
+    assert.equal(r.area, 65);
+  });
+
+  await runTest('extractAreaFromDescription: "150 metros quadrados"', async () => {
+    const r = extractAreaFromDescription('Moradia de 150 metros quadrados');
+    assert.ok(r);
+    assert.equal(r.area, 150);
+  });
+
+  await runTest('extractAreaFromDescription: rejects outlier (5m2)', async () => {
+    const r = extractAreaFromDescription('Sala com 5m2 de despensa');
+    assert.equal(r, null);
+  });
+
+  await runTest('extractAreaFromDescription: rejects no match', async () => {
+    const r = extractAreaFromDescription('Moradia bonita em Lisboa');
+    assert.equal(r, null);
+  });
+
+  await runTest('cleanItem fills area_useful from description when both areas are empty', async () => {
+    const item = {
+      source: 'olx',
+      title: 'Apt',
+      description: 'Apartamento com 95m2 em Porto',
+      price: '200000',
+      location: { district: 'Porto' },
+      property: { type: 'apartamento', area_total: '', area_useful: '' },
+      advertiser: {},
+      photos: [],
+      features: [],
+    };
+    const result = cleanItem(item, 'olx');
+    assert.equal(result.property.area_useful, 95);
+    assert.equal(result.property._area_source, 'description');
+  });
+
+  await runTest('cleanItem does NOT override existing area_useful from description', async () => {
+    const item = {
+      source: 'olx',
+      title: 'Apt',
+      description: 'Apartamento com 95m2 em Porto',
+      price: '200000',
+      location: { district: 'Porto' },
+      property: { type: 'apartamento', area_total: '', area_useful: '80' },
+      advertiser: {},
+      photos: [],
+      features: [],
+    };
+    const result = cleanItem(item, 'olx');
+    assert.equal(result.property.area_useful, 80);
+  });
 })().catch((error) => {
   process.exitCode = 1;
   throw error;

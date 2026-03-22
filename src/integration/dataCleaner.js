@@ -224,6 +224,50 @@ function cleanImovirtualFloor(floor) {
   return toNullIfEmpty(trimmed);
 }
 
+// ─── Area extraction from description ───
+
+/**
+ * Extract area from description text when structured data is missing.
+ * Portuguese patterns: "120m2", "120 m²", "área 120", "120 metros quadrados",
+ * "área útil: 80m2", "120m2 de área útil"
+ *
+ * Returns { area: number, source: 'description' } or null.
+ */
+function extractAreaFromDescription(description) {
+  if (!description || typeof description !== 'string') return null;
+
+  // Patterns ordered from most specific to least specific
+  const patterns = [
+    // "área útil: 80m2" / "área útil de 80 m²"
+    /[aá]rea\s*[uú]til\s*(?:de\s*|:\s*)?(\d{2,4})\s*m[²2]/i,
+    // "80m2 de área útil"
+    /(\d{2,4})\s*m[²2]\s*(?:de\s*)?[aá]rea\s*[uú]til/i,
+    // "área total: 120m2" / "área total de 120 m²"
+    /[aá]rea\s*(?:total|bruta)\s*(?:de\s*|:\s*)?(\d{2,4})\s*m[²2]/i,
+    // "120m2 de área" / "120 m² de área"
+    /(\d{2,4})\s*m[²2]\s*(?:de\s*)?[aá]rea/i,
+    // "área de 120m2" / "área: 120 m²"
+    /[aá]rea\s*(?:de\s*|:\s*)?(\d{2,4})\s*m[²2]/i,
+    // "120m2" / "120 m²" / "120m²" (standalone — no \b after ² since it's non-ASCII)
+    /\b(\d{2,4})\s*m[²2](?:\b|(?=[^a-zA-Z0-9²])|\s|$)/i,
+    // "120 metros quadrados"
+    /(\d{2,4})\s*metros?\s*quadrados?/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = description.match(pattern);
+    if (match && match[1]) {
+      const area = parseInt(match[1], 10);
+      // Validate range: 10-5000 m² (reject outliers)
+      if (area >= 10 && area <= 5000) {
+        return { area, source: 'description' };
+      }
+    }
+  }
+
+  return null;
+}
+
 // ─── Universal cleaners ───
 
 function cleanDescription(desc) {
@@ -337,6 +381,21 @@ function cleanItem(item, source) {
 
   // Universal cleaning
   result.description = cleanDescription(result.description);
+
+  // Extract area from description when structured data is missing
+  if (result.property) {
+    const hasAreaTotal = result.property.area_total && result.property.area_total !== '' && result.property.area_total !== '0';
+    const hasAreaUseful = result.property.area_useful && result.property.area_useful !== '' && result.property.area_useful !== '0';
+    if (!hasAreaTotal && !hasAreaUseful) {
+      const extracted = extractAreaFromDescription(result.description);
+      if (extracted) {
+        result.property = { ...result.property };
+        result.property.area_useful = String(extracted.area);
+        result.property._area_source = extracted.source;
+      }
+    }
+  }
+
   result = coerceStringsToNative(result);
 
   return result;
@@ -357,4 +416,5 @@ module.exports = {
   cleanImovirtualYear,
   cleanImovirtualFloor,
   coerceStringsToNative,
+  extractAreaFromDescription,
 };

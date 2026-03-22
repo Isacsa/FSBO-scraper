@@ -27,6 +27,51 @@ const { runPlatform } = require('../src/core/runPlatform');
 const { dedupeListInMemory } = require('../pipeline/deduplicate');
 const { applyIncremental } = require('../pipeline/incremental');
 const { calculateFsboScores } = require('../pipeline/fsboScore');
+const { analyzeBatch } = require('../src/services/valuation');
+const { loadPriceState, PRICE_HISTORY_DIR } = require('../src/price-tracker/priceStore');
+const { canonicalizeAdUrl } = require('../src/utils/canonicalizeUrl');
+
+/**
+ * Enrich items with price history data from the price state store.
+ * Adds _price_insights: { days_on_market, price_trend, price_changes, first_seen_price }
+ */
+function enrichWithPriceHistory(items, configId) {
+  let state;
+  try {
+    state = loadPriceState(configId);
+  } catch (_) {
+    return; // No price history available
+  }
+
+  if (!state?.listings || Object.keys(state.listings).length === 0) return;
+
+  const now = Date.now();
+  for (const item of items) {
+    const key = canonicalizeAdUrl(item.url);
+    if (!key) continue;
+
+    const entry = state.listings[key];
+    if (!entry) continue;
+
+    const firstSeen = new Date(entry.first_seen_at).getTime();
+    const daysOnMarket = Math.max(0, Math.round((now - firstSeen) / (1000 * 60 * 60 * 24)));
+
+    let priceTrend = 'stable';
+    if (entry.price_history && entry.price_history.length >= 2) {
+      const first = entry.price_history[0].price;
+      const last = entry.price_history[entry.price_history.length - 1].price;
+      if (last < first) priceTrend = 'dropping';
+      else if (last > first) priceTrend = 'rising';
+    }
+
+    item._price_insights = {
+      days_on_market: daysOnMarket,
+      price_trend: priceTrend,
+      price_changes: entry.price_history ? entry.price_history.length - 1 : 0,
+      first_seen_price: entry.first_seen_price || null,
+    };
+  }
+}
 
 const defaultDeps = {
   pullConfigs,
@@ -58,6 +103,49 @@ function getConnectionOptions(env = process.env) {
     apiKey: env.SCRAPER_API_KEY,
     tenantId: env.SCRAPER_TENANT_ID,
   };
+}
+
+/**
+ * Assess extraction quality of scraped items.
+ * Returns field coverage percentages and a quality verdict.
+ */
+function assessExtractionQuality(items) {
+  if (!items || items.length === 0) {
+    return { fields_coverage: {}, item_count: 0, verdict: 'EMPTY' };
+  }
+
+  const total = items.length;
+  const filled = (arr, path) => {
+    let count = 0;
+    for (const item of arr) {
+      const val = path.split('.').reduce((o, k) => o?.[k], item);
+      if (val !== null && val !== undefined && val !== '' && val !== 0) count++;
+    }
+    return Math.round((count / total) * 100);
+  };
+
+  const coverage = {
+    title: filled(items, 'title'),
+    price: filled(items, 'price'),
+    location_district: filled(items, 'location.district'),
+    location_municipality: filled(items, 'location.municipality'),
+    area: items.filter(i =>
+      (i.property?.area_total && i.property.area_total !== '' && i.property.area_total !== 0) ||
+      (i.property?.area_useful && i.property.area_useful !== '' && i.property.area_useful !== 0)
+    ).length / total * 100 | 0,
+    photos: items.filter(i => Array.isArray(i.photos) && i.photos.length > 0).length / total * 100 | 0,
+  };
+
+  let verdict = 'OK';
+  if (coverage.title < 50 || coverage.price < 50) {
+    verdict = 'DEGRADED';
+  } else if (coverage.location_district === 0 && coverage.location_municipality === 0) {
+    verdict = 'DEGRADED';
+  } else if (coverage.title < 80 || coverage.price < 80) {
+    verdict = 'PARTIAL';
+  }
+
+  return { fields_coverage: coverage, item_count: total, verdict };
 }
 
 function createLogger(stderr = process.stderr) {
@@ -142,6 +230,7 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {})
     runStatus = 'COMPLETED',
     errors = [],
     incrementalMeta = null,
+    extractionQuality = null,
   }) {
     const payload = deps.buildIngestPayload({
       runId,
@@ -155,6 +244,7 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {})
       runStatus,
       errors,
       incrementalMeta,
+      extractionQuality,
     });
 
     if (flags.dryRun) {
@@ -246,6 +336,23 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {})
       continue;
     }
 
+    // Assess extraction quality before processing
+    const quality = assessExtractionQuality(items);
+
+    if (quality.verdict === 'DEGRADED') {
+      log('error', `Degraded extraction from ${platform}`, {
+        configId,
+        platform,
+        extraction_quality: quality,
+      });
+    } else if (quality.verdict === 'PARTIAL') {
+      log('warn', `Partial extraction quality from ${platform}`, {
+        configId,
+        platform,
+        extraction_quality: quality,
+      });
+    }
+
     // In-memory dedupe within this batch
     const { unique: deduped, duplicates } = deps.dedupeListInMemory(items);
     const dedupeRemoved = duplicates ? duplicates.length : 0;
@@ -301,6 +408,59 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {})
       continue;
     }
 
+    // Valuation: score each accepted item against batch benchmarks
+    try {
+      const { reports, stats } = analyzeBatch(precision.accepted);
+      // Map reports back to items by URL
+      const reportByUrl = new Map();
+      for (const report of reports) {
+        const url = report.property?.url;
+        if (url) reportByUrl.set(url, report);
+      }
+      for (const item of precision.accepted) {
+        const report = reportByUrl.get(item.url);
+        if (report && report.evaluable) {
+          const bonuses = [];
+          const itemFsbo = item.fsbo_score ?? item.signals?.fsbo_score;
+          if (typeof itemFsbo === 'number' && itemFsbo >= 70) {
+            bonuses.push('FSBO (sem comissao ~5%)');
+          }
+          item._valuation = {
+            score: report.summary.score,
+            label: report.summary.verdict,
+            deviation_pct: report.summary.deviation_pct,
+            benchmark_price_sqm: report.summary.benchmark_price_per_sqm,
+            price_per_sqm: report.summary.price_per_sqm,
+            confidence: report.confidence,
+            benchmark_level: report.benchmark_level,
+            bonuses,
+          };
+        } else {
+          item._valuation = null;
+        }
+      }
+      log('info', `Valuation: ${stats.evaluated} evaluated, ${stats.skipped} skipped, ${stats.opportunities} opportunities`, {
+        configId,
+        platform,
+        valuation_stats: stats,
+      });
+    } catch (valErr) {
+      log('warn', `Valuation failed, continuing without scores: ${valErr.message}`, {
+        configId,
+        platform,
+      });
+      for (const item of precision.accepted) {
+        item._valuation = null;
+      }
+    }
+
+    // Enrich with price history from price-tracker state (if available)
+    try {
+      enrichWithPriceHistory(precision.accepted, configId);
+    } catch (phErr) {
+      log('warn', `Price history enrichment failed: ${phErr.message}`, { configId, platform });
+    }
+
     // Incremental tracking: annotate NEW / UPDATED / UNCHANGED
     let itemsToPush = precision.accepted;
     let incrementalMeta = null;
@@ -339,6 +499,7 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {})
     }
 
     // Push to APP Fastify API
+    const effectiveRunStatus = quality.verdict === 'DEGRADED' ? 'DEGRADED' : 'COMPLETED';
     try {
       const { payload } = await publishRun({
         platform,
@@ -347,8 +508,9 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {})
         rawItems: itemsToPush,
         totalScraped: deduped.length,
         dedupeRemoved,
-        runStatus: 'COMPLETED',
+        runStatus: effectiveRunStatus,
         incrementalMeta,
+        extractionQuality: quality,
       });
 
       runResults.sourcesSucceeded++;
@@ -520,5 +682,7 @@ module.exports = {
   shouldRunConfig,
   scrapeSource,
   processConfig,
+  assessExtractionQuality,
+  enrichWithPriceHistory,
   main,
 };

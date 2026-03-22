@@ -173,3 +173,77 @@ runTest('qa corpus examples keep score polarity aligned with decisions', () => {
     }
   });
 });
+
+runTest('ingest payload propagates valuation data when present', () => {
+  const item = {
+    source: 'olx',
+    ad_id: 'VAL123',
+    url: 'https://www.olx.pt/d/anuncio/test-IDval.html',
+    title: 'Apt T2 Valuation Test',
+    price: '200000',
+    location: { district: 'Porto', municipality: 'Porto', parish: 'Cedofeita' },
+    property: { type: 'apartamento', tipology: 'T2', area_useful: '80' },
+    advertiser: { name: 'João', is_agency: false },
+    photos: [],
+    features: [],
+    _valuation: {
+      score: 7.5,
+      label: 'Boa oportunidade',
+      deviation_pct: -15.3,
+      benchmark_price_sqm: 1850,
+      price_per_sqm: 2500,
+      confidence: 'medium',
+      benchmark_level: 'concelho+tipo',
+      bonuses: ['FSBO (sem comissao ~5%)'],
+    },
+  };
+  const result = toIngestItem(item, 'olx');
+  assert.ok(result.valuation, 'valuation should be present');
+  assert.equal(result.valuation.score, 7.5);
+  assert.equal(result.valuation.deviation_pct, -15.3);
+  assert.equal(result.valuation.confidence, 'medium');
+  assert.deepEqual(result.valuation.bonuses, ['FSBO (sem comissao ~5%)']);
+});
+
+runTest('ingest payload propagates price insights when present', () => {
+  const item = {
+    source: 'olx',
+    ad_id: 'PI123',
+    url: 'https://www.olx.pt/d/anuncio/test-IDpi.html',
+    title: 'Price Insights Test',
+    price: '180000',
+    location: { district: 'Porto' },
+    property: {},
+    advertiser: {},
+    photos: [],
+    features: [],
+    _price_insights: {
+      days_on_market: 45,
+      price_trend: 'dropping',
+      price_changes: 2,
+      first_seen_price: 200000,
+    },
+  };
+  const result = toIngestItem(item, 'olx');
+  assert.ok(result.price_insights, 'price_insights should be present');
+  assert.equal(result.price_insights.days_on_market, 45);
+  assert.equal(result.price_insights.price_trend, 'dropping');
+  assert.equal(result.price_insights.first_seen_price, 200000);
+});
+
+runTest('ingest payload sets valuation to null when not present', () => {
+  const item = {
+    source: 'olx',
+    ad_id: 'VAL456',
+    url: 'https://www.olx.pt/d/anuncio/test-IDval2.html',
+    title: 'No Valuation',
+    price: '100000',
+    location: {},
+    property: {},
+    advertiser: {},
+    photos: [],
+    features: [],
+  };
+  const result = toIngestItem(item, 'olx');
+  assert.equal(result.valuation, null);
+});
