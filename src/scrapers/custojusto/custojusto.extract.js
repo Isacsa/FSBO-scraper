@@ -3,7 +3,8 @@
  * Listagem e anúncios individuais
  */
 
-const { createBrowser, createPage, navigateWithRetry } = require('../../utils/browser');
+const { createBrowser, createPage, navigateWithRetry, HttpError } = require('../../utils/browser');
+const { closePopupsAndOverlays } = require('../helpers');
 const { randomDelay, slowScroll, getRandomUserAgent } = require('./custojusto.utils');
 const { cleanText } = require('../../utils/selectors');
 
@@ -256,9 +257,22 @@ async function extractAllListingUrls(listingUrl, options = {}) {
   try {
     // Navegar para primeira página
     console.log(`[CustoJusto Extract] 📄 Carregando página ${currentPage}...`);
-    await page.goto(listingUrl, { waitUntil: 'domcontentloaded', timeout });
+    await navigateWithRetry(page, listingUrl);
     await randomDelay(3000, 5000);
-    
+
+    // Fechar cookie consent e popups
+    await closePopupsAndOverlays(page, 'CUSTOJUSTO');
+    // Cookiebot específico (CustoJusto usa CybotCookiebotDialog)
+    try {
+      const cookieBtnSel = '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll, #CybotCookiebotDialogBodyButtonAccept';
+      const cookieBtn = await page.$(cookieBtnSel);
+      if (cookieBtn) {
+        await cookieBtn.click();
+        console.log('[CustoJusto Extract] Cookie consent accepted (Cookiebot)');
+        await randomDelay(1500, 2500);
+      }
+    } catch (_) {}
+
     // Aguardar body carregar
     try {
       await page.waitForSelector('body', { timeout: 10000 });
@@ -327,7 +341,11 @@ async function extractAllListingUrls(listingUrl, options = {}) {
       
       console.log(`[CustoJusto Extract] 📄 Carregando página ${currentPage}...`);
       await randomDelay(2000, 4000);
-      await page.goto(nextPageUrl, { waitUntil: 'domcontentloaded', timeout });
+      const pageResp = await page.goto(nextPageUrl, { waitUntil: 'domcontentloaded', timeout });
+      if (pageResp && pageResp.status() >= 400) {
+        console.warn(`[CustoJusto Extract] HTTP ${pageResp.status()} na página ${currentPage} — parando paginação`);
+        break;
+      }
       await randomDelay(3000, 5000);
       
       // Aguardar body carregar
@@ -375,28 +393,19 @@ async function extractAdDetails(adUrl, options = {}) {
   
   try {
     // Navegar para anúncio
-    await page.goto(adUrl, { waitUntil: 'domcontentloaded', timeout });
+    await navigateWithRetry(page, adUrl);
     await randomDelay(2000, 3000);
-    
-    // Aceitar cookies se existir
+
+    // Fechar cookie consent e popups
+    await closePopupsAndOverlays(page, 'CUSTOJUSTO');
     try {
-      await page.evaluate(() => {
-        const buttons = Array.from(document.querySelectorAll('button, a, span'));
-        const button = buttons.find(el => {
-          const text = el.textContent?.toLowerCase() || '';
-          return text.includes('aceitar') || 
-                 text.includes('accept') || 
-                 text.includes('concordo') ||
-                 text.includes('ok') ||
-                 el.getAttribute('id')?.includes('cookie') ||
-                 el.getAttribute('class')?.includes('cookie');
-        });
-        if (button) button.click();
-      });
-      await randomDelay(1000, 2000);
-    } catch (e) {
-      // Ignorar erro de cookies
-    }
+      const cookieBtnSel = '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll, #CybotCookiebotDialogBodyButtonAccept';
+      const cookieBtn = await page.$(cookieBtnSel);
+      if (cookieBtn) {
+        await cookieBtn.click();
+        await randomDelay(1000, 2000);
+      }
+    } catch (_) {}
     
     // Scroll para carregar conteúdo
     await slowScroll(page, 'down', 500);

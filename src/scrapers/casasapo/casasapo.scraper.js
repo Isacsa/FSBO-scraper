@@ -7,6 +7,7 @@ const { parseAdsData } = require('./casasapo.parse');
 const { normalizeAds } = require('./casasapo.normalize');
 const { updateCache, filterNewAds } = require('./casasapo.cache');
 const { normalizeFinalObject } = require('../../utils/finalNormalizer');
+const { HttpError } = require('../../utils/browser');
 
 /**
  * Scrape completo do Casa Sapo
@@ -49,17 +50,40 @@ async function scrapeCasaSapo(listingUrl, options = {}) {
     // Fase 2: Extrair detalhes dos anúncios
     console.log('[CASASAPO] 📋 Fase 2: Extraindo detalhes dos anúncios...');
     const rawAds = [];
-    
+    let consecutive429 = 0;
+    let baseDelay = 4000;
+
     for (let i = 0; i < urlsToProcess.length; i++) {
       const url = urlsToProcess[i];
       console.log(`[CASASAPO] 📄 [${i + 1}/${urlsToProcess.length}] ${url}`);
-      
+
       try {
         const rawAd = await extractAdDetails(url, { timeout: 60000, headless });
         rawAds.push(rawAd);
+        consecutive429 = 0;
+
+        // Delay entre anúncios
+        if (i < urlsToProcess.length - 1) {
+          await new Promise(r => setTimeout(r, baseDelay + Math.random() * 3000));
+        }
       } catch (error) {
-        console.error(`[CASASAPO] ⚠️  Erro ao extrair anúncio ${url}:`, error.message);
-        // Continuar com próximo
+        if (error instanceof HttpError && (error.status === 429 || error.status === 403)) {
+          consecutive429++;
+          console.warn(`[CASASAPO] ${error.status} (#${consecutive429} consecutivos): ${url}`);
+
+          if (consecutive429 >= 3) {
+            console.warn(`[CASASAPO] 3+ rate limits consecutivos — parando extração com ${rawAds.length} anúncios`);
+            break;
+          }
+          // Cooldown progressivo
+          const cooldown = 10000 * consecutive429 + Math.random() * 5000;
+          console.warn(`[CASASAPO] Cooldown ${Math.round(cooldown/1000)}s...`);
+          await new Promise(r => setTimeout(r, cooldown));
+          baseDelay = 10000; // Aumentar delay base
+        } else {
+          console.error(`[CASASAPO] ⚠️  Erro ao extrair anúncio ${url}:`, error.message);
+          consecutive429 = 0;
+        }
       }
     }
     

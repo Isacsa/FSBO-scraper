@@ -237,18 +237,27 @@ async function extractAllListingUrls(listingUrl, options = {}) {
       
       console.log(`[CasaSapo Extract] 📄 Carregando página ${currentPage}...`);
       await randomDelay(1500, 3200);
-      await navigateWithRetry(page, nextPageUrl, { timeout });
+      try {
+        await navigateWithRetry(page, nextPageUrl, { timeout });
+      } catch (navErr) {
+        // 429/403 on pagination — stop but keep what we have
+        if (navErr.name === 'HttpError') {
+          console.warn(`[CasaSapo Extract] HTTP ${navErr.status} na página ${currentPage} — parando paginação, mantendo ${allUrls.size} anúncios`);
+          break;
+        }
+        throw navErr;
+      }
       await randomDelay(3000, 5000);
-      
+
       // Fechar popups novamente
       await closePopupsAndOverlays(page);
       await randomDelay(1000, 2000);
     }
-    
+
     console.log(`[CasaSapo Extract] ✅ Extração de listagem concluída: ${allUrls.size} anúncios únicos sem telefone`);
-    
+
     return Array.from(allUrls);
-    
+
   } catch (error) {
     console.error('[CasaSapo Extract] ❌ Erro durante extração de listagem:', error.message);
     throw error;
