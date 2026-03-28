@@ -226,7 +226,11 @@ async function extractAllListingUrls(listingUrl, options = {}) {
       
       console.log(`[Imovirtual Listings] 📄 Carregando página ${currentPage}...`);
       await page.waitForTimeout(2000);
-      await page.goto(nextPageUrl.toString(), { waitUntil: 'domcontentloaded', timeout });
+      const pageResp = await page.goto(nextPageUrl.toString(), { waitUntil: 'domcontentloaded', timeout });
+      if (pageResp && pageResp.status() >= 400) {
+        console.warn(`[Imovirtual Listings] HTTP ${pageResp.status()} na página ${currentPage} — parando paginação`);
+        break;
+      }
       await page.waitForTimeout(3000);
       
       // Fechar popups novamente

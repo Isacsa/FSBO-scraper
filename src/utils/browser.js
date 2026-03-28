@@ -220,10 +220,20 @@ async function createPage(browser, options = {}) {
  * @param {number} options.waitUntil - Wait until condition (default: 'domcontentloaded')
  * @returns {Promise<Response>}
  */
+class HttpError extends Error {
+  constructor(status, url) {
+    super(`HTTP ${status} for ${url}`);
+    this.name = 'HttpError';
+    this.status = status;
+    this.url = url;
+  }
+}
+
 async function navigateWithRetry(page, url, options = {}) {
   const {
     retries = 3,
-    waitUntil = 'domcontentloaded'
+    waitUntil = 'domcontentloaded',
+    validateStatus = true
   } = options;
 
   let lastError;
@@ -234,10 +244,32 @@ async function navigateWithRetry(page, url, options = {}) {
         waitUntil: waitUntil,
         timeout: 30000
       });
-      console.log(`[Browser] Navigation successful: ${response.status()}`);
+      const status = response.status();
+      console.log(`[Browser] Navigation status: ${status}`);
+
+      if (validateStatus && status >= 400) {
+        const err = new HttpError(status, url);
+        if (status === 403 || status === 429) {
+          // Rate limit or bot block — retry with longer backoff
+          const backoff = status === 429
+            ? (5000 * Math.pow(2, i))   // 5s, 10s, 20s
+            : (8000 * Math.pow(2, i));  // 8s, 16s, 32s for 403
+          console.warn(`[Browser] ${status} detected, waiting ${Math.round(backoff/1000)}s before retry...`);
+          if (i < retries - 1) {
+            await new Promise(resolve => setTimeout(resolve, backoff));
+            continue;
+          }
+        }
+        throw err;
+      }
+
       return response;
     } catch (error) {
       lastError = error;
+      if (error instanceof HttpError) {
+        if (i >= retries - 1) throw error;
+        continue;
+      }
       console.warn(`[Browser] Navigation attempt ${i + 1} failed:`, error.message);
       if (i < retries - 1) {
         await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)));
@@ -301,7 +333,8 @@ module.exports = {
   navigateWithRetry,
   waitForElement,
   clickWithRetry,
-  shouldRunHeadless
+  shouldRunHeadless,
+  HttpError
 };
 
 

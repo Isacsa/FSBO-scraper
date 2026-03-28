@@ -143,15 +143,63 @@ function looksLikeRealEstateCard(cardText) {
 /**
  * Extrai URLs de anúncios de uma página de listagem
  */
+/**
+ * Parses card data from an OLX listing card element
+ * Extracts title, price, location, area, and thumbnail
+ */
+function parseCardData(raw) {
+  const card = { title: null, price: null, location: null, area: null, thumbnail: null };
+
+  // Price: clean "299.000 €Negociável" → 299000
+  if (raw.priceText) {
+    const priceMatch = raw.priceText.replace(/\s/g, '').match(/([\d.]+)\s*€/);
+    if (priceMatch) {
+      card.price = parseInt(priceMatch[1].replace(/\./g, ''), 10) || null;
+    }
+  }
+
+  // Title: strip trailing price text
+  if (raw.titleText) {
+    let title = raw.titleText;
+    if (card.price) {
+      // Remove price suffix (e.g., "Moradia T4375.000 €" → "Moradia T4")
+      const priceIdx = title.search(/\d{1,3}(?:\.\d{3})*\s*€/);
+      if (priceIdx > 0) title = title.substring(0, priceIdx);
+    }
+    card.title = title.trim() || null;
+  }
+
+  // Location & area from smallTexts
+  if (Array.isArray(raw.smallTexts)) {
+    for (const text of raw.smallTexts) {
+      // Area: "250 m²" or "685 m²"
+      const areaMatch = text.match(/^(\d{2,5})\s*m[²2]$/);
+      if (areaMatch) {
+        card.area = parseInt(areaMatch[1], 10);
+        continue;
+      }
+      // Location: "Viana do Castelo - 21 de março de 2026" or "Argela - Para o topo..."
+      const locMatch = text.match(/^(.+?)\s*-\s*(?:Para o topo|Ontem|Hoje|\d{1,2}\s+de\s+)/i);
+      if (locMatch && locMatch[1].length > 2) {
+        card.location = locMatch[1].trim();
+      }
+    }
+  }
+
+  if (raw.thumbnail) card.thumbnail = raw.thumbnail;
+
+  return card;
+}
+
 async function extractListingUrls(page) {
   console.log('[OLX Listings] 🔍 Extraindo URLs de anúncios da listagem...');
-  
+
   // Aguardar JavaScript carregar
   await page.waitForTimeout(2000);
-  
+
   const candidates = await page.evaluate(() => {
     const entries = [];
-    
+
     // Método 1: Procurar links de anúncios no HTML
     // Seletores comuns do OLX para anúncios
     const adSelectors = [
@@ -167,15 +215,27 @@ async function extractListingUrls(page) {
       '.css-1sw7q4x a',
       '[data-cy="l-card"] a'
     ];
-    
+
     for (const selector of adSelectors) {
       const links = document.querySelectorAll(selector);
       links.forEach(link => {
         const href = link.getAttribute('href');
-        if (href) {
-          const cardText = link.closest('article, [data-cy="l-card"], [data-testid="ad-card"]')?.textContent || '';
-          entries.push({ href, cardText });
-        }
+        if (!href) return;
+        const card = link.closest('article, [data-cy="l-card"], [data-testid="ad-card"]');
+        const cardText = card?.textContent || '';
+
+        // Extract structured card data
+        const titleEl = card?.querySelector('h6, h4, [data-cy*="title"]');
+        const titleText = titleEl?.textContent?.trim() || '';
+        const priceEl = card?.querySelector('[data-testid="ad-price"], p[data-testid]');
+        const priceText = priceEl?.textContent?.trim() || '';
+        const smallTexts = card
+          ? [...card.querySelectorAll('p, span')].map(el => el.textContent?.trim()).filter(Boolean)
+          : [];
+        const imgEl = card?.querySelector('img');
+        const thumbnail = imgEl?.src || imgEl?.getAttribute('data-src') || '';
+
+        entries.push({ href, cardText, titleText, priceText, smallTexts, thumbnail });
       });
     }
 
@@ -190,7 +250,7 @@ async function extractListingUrls(page) {
           if (!obj || typeof obj !== 'object') return;
           if (typeof obj.url === 'string' && obj.url.includes('olx.pt') &&
               (obj.url.includes('/d/anuncio/') || obj.url.includes('/anuncio/') || obj.url.includes('/ad/'))) {
-            entries.push({ href: obj.url, cardText: obj.name || '' });
+            entries.push({ href: obj.url, cardText: obj.name || '', titleText: obj.name || '', priceText: '', smallTexts: [], thumbnail: '' });
           }
           if (Array.isArray(obj.offers)) {
             obj.offers.forEach(o => extractUrlsFromObj(o));
@@ -214,28 +274,29 @@ async function extractListingUrls(page) {
         const urlMatches = dataStr.match(/https?:\/\/[^"'\s]*olx\.pt[^"'\s]*\/(?:d\/anuncio|anuncio|ad)\/[^"'\s]*/g);
         if (urlMatches) {
           urlMatches.forEach(url => {
-            entries.push({ href: url, cardText: '' });
+            entries.push({ href: url, cardText: '', titleText: '', priceText: '', smallTexts: [], thumbnail: '' });
           });
         }
       } catch (e) {
         // Ignorar erros de parsing
       }
     });
-    
+
     return entries;
   });
 
-  const urlSet = new Set();
-  candidates.forEach(({ href, cardText }) => {
-    const normalized = normalizeOlxListingUrl(href);
+  const resultMap = new Map();
+  candidates.forEach((entry) => {
+    const normalized = normalizeOlxListingUrl(entry.href);
     if (!normalized) return;
-    if (!looksLikeRealEstateCard(cardText)) return;
-    urlSet.add(normalized);
+    if (!looksLikeRealEstateCard(entry.cardText)) return;
+    if (!resultMap.has(normalized)) {
+      resultMap.set(normalized, parseCardData(entry));
+    }
   });
-  const urls = Array.from(urlSet);
-  
-  console.log(`[OLX Listings] ✅ Encontrados ${urls.length} anúncios nesta página`);
-  return urls;
+
+  console.log(`[OLX Listings] ✅ Encontrados ${resultMap.size} anúncios nesta página`);
+  return resultMap;
 }
 
 /**
@@ -296,46 +357,48 @@ async function extractAllListingUrls(listingUrl, options = {}) {
     geolocation: { latitude: 38.7223, longitude: -9.1393 }
   });
   
-  const allUrls = new Set();
+  const allListings = new Map(); // url -> cardData
   let currentPage = 1;
-  
+
   try {
     // Navegar para primeira página (com filtro de particulares)
     console.log(`[OLX Listings] 📄 Carregando página ${currentPage}...`);
     await navigateWithRetry(page, urlWithPrivateFilter);
     await page.waitForTimeout(3000);
-    
+
     // Fechar popups
     await closePopupsAndOverlays(page, 'OLX');
     await page.waitForTimeout(2000);
-    
+
     // Aguardar body carregar
     try {
       await page.waitForSelector('body', { timeout: 10000 });
     } catch (e) {
       console.warn('[OLX Listings] ⚠️  Timeout aguardando body');
     }
-    
+
     while (true) {
-      // Extrair URLs desta página
-      const pageUrls = await extractListingUrls(page);
-      pageUrls.forEach(url => allUrls.add(url));
-      
-      console.log(`[OLX Listings] 📊 Página ${currentPage}: ${pageUrls.length} anúncios (total acumulado: ${allUrls.size})`);
-      
+      // Extrair URLs e card data desta página
+      const pageMap = await extractListingUrls(page);
+      for (const [url, card] of pageMap) {
+        if (!allListings.has(url)) allListings.set(url, card);
+      }
+
+      console.log(`[OLX Listings] 📊 Página ${currentPage}: ${pageMap.size} anúncios (total acumulado: ${allListings.size})`);
+
       // Verificar limite de páginas
       if (maxPages && currentPage >= maxPages) {
         console.log(`[OLX Listings] ⏹️  Limite de ${maxPages} páginas atingido`);
         break;
       }
-      
+
       // Verificar se há próxima página
       const hasNext = await hasNextPage(page);
       if (!hasNext) {
         console.log(`[OLX Listings] ✅ Última página alcançada`);
         break;
       }
-      
+
       // Navegar para próxima página
       currentPage++;
       const nextPageUrl = await page.evaluate(({ currentPage, filterPrivateOnly }) => {
@@ -346,20 +409,24 @@ async function extractAllListingUrls(listingUrl, options = {}) {
         }
         return url.toString();
       }, { currentPage, filterPrivateOnly });
-      
+
       console.log(`[OLX Listings] 📄 Carregando página ${currentPage}...`);
       await page.waitForTimeout(2000);
-      await page.goto(nextPageUrl, { waitUntil: 'domcontentloaded', timeout });
+      const pageResp = await page.goto(nextPageUrl, { waitUntil: 'domcontentloaded', timeout });
+      if (pageResp && pageResp.status() >= 400) {
+        console.warn(`[OLX Listings] HTTP ${pageResp.status()} na página ${currentPage} — parando paginação`);
+        break;
+      }
       await page.waitForTimeout(3000);
-      
+
       // Fechar popups novamente
       await closePopupsAndOverlays(page, 'OLX');
       await page.waitForTimeout(1000);
     }
-    
-    console.log(`[OLX Listings] ✅ Extração de listagem concluída: ${allUrls.size} anúncios únicos`);
-    
-    return Array.from(allUrls);
+
+    console.log(`[OLX Listings] ✅ Extração de listagem concluída: ${allListings.size} anúncios únicos`);
+
+    return allListings;
     
   } catch (error) {
     console.error('[OLX Listings] ❌ Erro durante extração de listagem:', error.message);
@@ -375,5 +442,6 @@ module.exports = {
   extractListingUrls,
   normalizeOlxListingUrl,
   looksLikeRealEstateCard,
+  parseCardData,
 };
 

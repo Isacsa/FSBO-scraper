@@ -2,6 +2,7 @@ const assert = require('assert');
 const {
   normalizeOlxListingUrl,
   looksLikeRealEstateCard,
+  parseCardData,
 } = require('../src/scrapers/olx/olx.listings');
 const normalizeCustoJustoAd = require('../src/scrapers/custojusto/custojusto.normalize').normalizeAd;
 const normalizeCasaSapoAd = require('../src/scrapers/casasapo/casasapo.normalize').normalizeAd;
@@ -182,6 +183,58 @@ async function runTest(name, fn) {
     const result = cleanItem(item, 'olx');
     assert.equal(result.property.area_useful, 95);
     assert.equal(result.property._area_source, 'description');
+  });
+
+  // --- parseCardData tests ---
+
+  await runTest('parseCardData extracts title, price, location, area from OLX card', async () => {
+    const card = parseCardData({
+      titleText: 'Moradia T4 com Terreno375.000 €',
+      priceText: '375.000 €',
+      smallTexts: ['375.000 €', 'Argela - Para o topo a 26 de março de 2026', '250 m²'],
+      thumbnail: 'https://ireland.apollo.olxcdn.com/v1/files/test/image;s=216x152',
+    });
+    assert.equal(card.title, 'Moradia T4 com Terreno');
+    assert.equal(card.price, 375000);
+    assert.equal(card.location, 'Argela');
+    assert.equal(card.area, 250);
+    assert.ok(card.thumbnail.includes('olxcdn.com'));
+  });
+
+  await runTest('parseCardData handles price with Negociável suffix', async () => {
+    const card = parseCardData({
+      titleText: 'Armazém 300m²299.000 €Negociável',
+      priceText: '299.000 €Negociável',
+      smallTexts: ['299.000 €Negociável', 'Negociável', 'Valença, Cristelo Covo E Arão - Para o topo hoje às 07:19', '685 m²'],
+      thumbnail: '',
+    });
+    assert.equal(card.price, 299000);
+    assert.equal(card.location, 'Valença, Cristelo Covo E Arão');
+    assert.equal(card.area, 685);
+  });
+
+  await runTest('parseCardData handles card with no area', async () => {
+    const card = parseCardData({
+      titleText: 'T1 Centro600 €',
+      priceText: '600 €',
+      smallTexts: ['600 €', 'Viana do Castelo - 21 de março de 2026'],
+      thumbnail: '',
+    });
+    assert.equal(card.price, 600);
+    assert.equal(card.area, null);
+    assert.equal(card.location, 'Viana do Castelo');
+  });
+
+  // --- HttpError tests ---
+  const { HttpError } = require('../src/utils/browser');
+
+  await runTest('HttpError carries status code and URL', async () => {
+    const err = new HttpError(403, 'https://www.olx.pt/d/anuncio/test-ID123.html');
+    assert.equal(err.status, 403);
+    assert.equal(err.name, 'HttpError');
+    assert.ok(err.message.includes('403'));
+    assert.ok(err.message.includes('olx.pt'));
+    assert.ok(err instanceof Error);
   });
 
   await runTest('cleanItem does NOT override existing area_useful from description', async () => {

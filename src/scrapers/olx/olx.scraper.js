@@ -15,8 +15,67 @@ const { extractAllListingUrls } = require('./olx.listings');
 const { filterNewAds, updateCache } = require('./olx.cache');
 const { normalizeFinalObject } = require('../../utils/finalNormalizer');
 const { analyzeFsboSignals } = require('../../services/fsboSignals');
+const { HttpError } = require('../../utils/browser');
 
 const PLATFORM = 'olx';
+
+/**
+ * Builds a minimal item from listing card data when full scrape fails (403)
+ * Since the listing page was filtered by private_business=private, these are FSBO
+ */
+function buildCardFallback(adUrl, card, fromPrivateFilter) {
+  const item = {
+    url: adUrl,
+    source: PLATFORM,
+    title: card.title || null,
+    price: card.price || null,
+    description: null,
+    location: {},
+    property: {
+      type: null,
+      area_total: null,
+      area_useful: card.area ? String(card.area) : null,
+      rooms: null,
+      bathrooms: null,
+      condition: null,
+      floor: null,
+      year_built: null,
+    },
+    advertiser: {
+      name: null,
+      type: fromPrivateFilter ? 'particular' : null,
+      is_agency: fromPrivateFilter ? false : null,
+      phone: null,
+      url: null,
+    },
+    photos: card.thumbnail ? [card.thumbnail] : [],
+    features: {},
+    _card_only: true,
+  };
+
+  // Parse location from card (e.g., "Valença, Cristelo Covo E Arão")
+  if (card.location) {
+    const parts = card.location.split(',').map(s => s.trim());
+    if (parts.length >= 2) {
+      item.location.municipality = parts[0];
+      item.location.parish = parts.slice(1).join(', ');
+    } else {
+      item.location.municipality = parts[0];
+    }
+  }
+
+  // Try to detect property type from title
+  if (card.title) {
+    const t = card.title.toLowerCase();
+    if (/\bt[0-9]\b/.test(t) || t.includes('apartamento')) item.property.type = 'apartamento';
+    else if (t.includes('moradia') || t.includes('vivenda')) item.property.type = 'moradia';
+    else if (t.includes('terreno')) item.property.type = 'terreno';
+    else if (t.includes('quinta')) item.property.type = 'quinta';
+    else if (t.includes('armazém') || t.includes('armazem')) item.property.type = 'armazém';
+  }
+
+  return item;
+}
 
 /**
  * Detecta se URL é de listagem ou anúncio individual
@@ -132,16 +191,16 @@ async function scrapeOLX(url, options = {}) {
   console.log(`[${PLATFORM.toUpperCase()}] Filtrar agências: ${effectiveFilterAgencies ? 'Sim' : 'Não'} ${hasPrivateFilter ? '(já filtrado por particulares)' : ''}`);
   
   try {
-    // 1. Extrair URLs de todas as páginas
+    // 1. Extrair URLs e card data de todas as páginas
     console.log(`[${PLATFORM.toUpperCase()}] 📋 Fase 1: Extraindo URLs de listagem...`);
-    const listingUrls = await extractAllListingUrls(url, {
+    const listingsMap = await extractAllListingUrls(url, {
       maxPages,
       timeout: 40000,
       headless,
       filterPrivateOnly
     });
-    
-    if (listingUrls.length === 0) {
+
+    if (listingsMap.size === 0) {
       console.warn(`[${PLATFORM.toUpperCase()}] ⚠️  Nenhum anúncio encontrado na listagem`);
       return {
         success: true,
@@ -152,31 +211,76 @@ async function scrapeOLX(url, options = {}) {
         agencies_filtered: 0
       };
     }
-    
+
     // Limitar número de anúncios se especificado
-    const urlsToProcess = maxAds ? listingUrls.slice(0, maxAds) : listingUrls;
-    console.log(`[${PLATFORM.toUpperCase()}] 📊 Processando ${urlsToProcess.length} de ${listingUrls.length} anúncios encontrados...`);
-    
-    // 2. Extrair detalhes de cada anúncio
+    const allEntries = Array.from(listingsMap.entries());
+    const entriesToProcess = maxAds ? allEntries.slice(0, maxAds) : allEntries;
+    console.log(`[${PLATFORM.toUpperCase()}] 📊 Processando ${entriesToProcess.length} de ${listingsMap.size} anúncios encontrados...`);
+
+    // 2. Extrair detalhes de cada anúncio (com fallback para card data em caso de 403)
     console.log(`[${PLATFORM.toUpperCase()}] 📋 Fase 2: Extraindo detalhes dos anúncios...`);
     const rawAdsData = [];
-    
-    for (let i = 0; i < urlsToProcess.length; i++) {
-      const adUrl = urlsToProcess[i];
-      console.log(`[${PLATFORM.toUpperCase()}] 📄 [${i + 1}/${urlsToProcess.length}] ${adUrl}`);
-      
+    let consecutive403 = 0;
+    let total403 = 0;
+    let baseDelay = 2000;
+
+    for (let i = 0; i < entriesToProcess.length; i++) {
+      const [adUrl, cardData] = entriesToProcess[i];
+      console.log(`[${PLATFORM.toUpperCase()}] 📄 [${i + 1}/${entriesToProcess.length}] ${adUrl}`);
+
       try {
         const adData = await getSingleScraper()(adUrl, { headless });
         rawAdsData.push(adData);
-        
-        // Delay entre anúncios
-        if (i < urlsToProcess.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 2000));
+        consecutive403 = 0;
+
+        // Delay entre anúncios (adapta-se a 403s anteriores)
+        if (i < entriesToProcess.length - 1) {
+          const delay = baseDelay + Math.random() * 2000;
+          await new Promise(resolve => setTimeout(resolve, delay));
         }
       } catch (error) {
-        console.error(`[${PLATFORM.toUpperCase()}] ❌ Erro ao extrair anúncio ${adUrl}:`, error.message);
-        // Continuar com próximo
+        if (error instanceof HttpError && error.status === 403) {
+          consecutive403++;
+          total403++;
+          console.warn(`[${PLATFORM.toUpperCase()}] 403 Forbidden (#${total403}, ${consecutive403} consecutivos): ${adUrl}`);
+
+          // Fallback: use card data from listing page
+          if (cardData && (cardData.title || cardData.price)) {
+            const fallbackItem = buildCardFallback(adUrl, cardData, hasPrivateFilter);
+            rawAdsData.push(fallbackItem);
+            console.log(`[${PLATFORM.toUpperCase()}] Fallback card data usado: "${cardData.title}" ${cardData.price ? cardData.price + '€' : ''}`);
+          }
+
+          if (consecutive403 >= 5) {
+            // IP bloqueado — usar card data para os restantes
+            console.warn(`[${PLATFORM.toUpperCase()}] 5+ 403 consecutivos — usando card data para restantes anúncios`);
+            for (let j = i + 1; j < entriesToProcess.length; j++) {
+              const [remainUrl, remainCard] = entriesToProcess[j];
+              if (remainCard && (remainCard.title || remainCard.price)) {
+                rawAdsData.push(buildCardFallback(remainUrl, remainCard, hasPrivateFilter));
+              }
+            }
+            break;
+          }
+
+          if (consecutive403 >= 3) {
+            baseDelay = 15000;
+            console.warn(`[${PLATFORM.toUpperCase()}] 3+ 403 consecutivos — aumentando delay para ${baseDelay/1000}s`);
+          }
+
+          // Cooldown proporcional
+          const cooldown = 5000 * consecutive403 + Math.random() * 3000;
+          console.warn(`[${PLATFORM.toUpperCase()}] Cooldown ${Math.round(cooldown/1000)}s antes do próximo...`);
+          await new Promise(resolve => setTimeout(resolve, cooldown));
+        } else {
+          console.error(`[${PLATFORM.toUpperCase()}] Erro ao extrair anúncio ${adUrl}:`, error.message);
+          consecutive403 = 0;
+        }
       }
+    }
+
+    if (total403 > 0) {
+      console.warn(`[${PLATFORM.toUpperCase()}] Total de 403 errors: ${total403}/${entriesToProcess.length} (${rawAdsData.length} anúncios recuperados via card data ou scrape)`);
     }
     
     console.log(`[${PLATFORM.toUpperCase()}] ✅ Extração concluída: ${rawAdsData.length} anúncios`);

@@ -113,15 +113,30 @@ async function navigateWithRetry(page, url, options = {}) {
     timeout = 60000,
     waitUntil = 'domcontentloaded'
   } = options;
-  
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`[Browser] Navigating to ${url} (attempt ${attempt}/${maxRetries})`);
-      await page.goto(url, { waitUntil, timeout });
-      const status = page.url() === url ? 200 : 'redirected';
-      console.log(`[Browser] Navigation successful: ${status}`);
+      const response = await page.goto(url, { waitUntil, timeout });
+      const status = response ? response.status() : 0;
+      console.log(`[Browser] Navigation status: ${status}`);
+      if (status === 403 || status === 429) {
+        const backoff = 8000 * Math.pow(2, attempt - 1);
+        console.warn(`[Browser] ${status} detected, waiting ${Math.round(backoff/1000)}s before retry...`);
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, backoff));
+          continue;
+        }
+        const { HttpError } = require('../../utils/browser');
+        throw new HttpError(status, url);
+      }
+      if (status >= 400) {
+        const { HttpError } = require('../../utils/browser');
+        throw new HttpError(status, url);
+      }
       return;
     } catch (error) {
+      if (error.name === 'HttpError') throw error;
       if (attempt === maxRetries) {
         throw new Error(`Failed to navigate after ${maxRetries} attempts: ${error.message}`);
       }
