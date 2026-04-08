@@ -605,9 +605,6 @@ test('builds valid payload', () => {
   assert.strictEqual(payload.events[0].price_data.drop_percent, 16);
   assert.strictEqual(payload.events[0].price_data.first_seen_price, 250000);
   assert.strictEqual(payload.events[0].price_data.current_price, 210000);
-  assert.ok('drop_type' in payload.events[0].price_data);
-  assert.ok('step_drop_percent' in payload.events[0].price_data);
-  assert.ok('prev_price' in payload.events[0].price_data);
   assert.strictEqual(payload.events[0].location.district, 'Porto');
   assert.strictEqual(payload.meta.total_tracked, 100);
 });

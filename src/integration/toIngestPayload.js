@@ -98,6 +98,7 @@ function buildIngestPayload({
   errors = [],
   incrementalMeta = null,
   extractionQuality = null,
+  priceTrackingMeta = null,
 }) {
   const items = rawItems.map(item => toIngestItem(item, source));
 
@@ -124,6 +125,12 @@ function buildIngestPayload({
       } : {}),
       ...(extractionQuality ? {
         extraction_quality: extractionQuality,
+      } : {}),
+      ...(priceTrackingMeta ? {
+        price_tracking: {
+          new_listings: priceTrackingMeta.newCount,
+          price_changes: priceTrackingMeta.priceChanged,
+        },
       } : {}),
     },
   };

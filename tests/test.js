@@ -31,4 +31,5 @@ require('./fsbo-confidence-model.test');
 require('./test-idealista-lobstr');
 require('./valuation.test');
 require('./price-tracker.test');
+require('./broad-scraper.test');
 

@@ -11,10 +11,11 @@
     "scrape-all": "node scripts/scrape-all.js",
     "scrape-push": "node scripts/scrape-and-push.js",
     "price-tracker": "node scripts/price-tracker.js",
+    "broad-scraper": "node scripts/broad-scraper.js",
     "lobstr:squids": "node scripts/list-lobstr-squids.js",
     "lobstr:test": "node scripts/test-lobstr-connection.js",
     "analyze": "node scripts/analyze-valuations.js",
-    "daily": "node scripts/scrape-and-push.js --run-now; SCRAPE_EXIT=$?; node scripts/price-tracker.js --run-now; PRICE_EXIT=$?; exit $(( SCRAPE_EXIT > PRICE_EXIT ? SCRAPE_EXIT : PRICE_EXIT ))"
+    "daily": "node scripts/scrape-and-push.js --run-now; SCRAPE_EXIT=$?; node scripts/price-tracker.js --run-now; PRICE_EXIT=$?; node scripts/broad-scraper.js --run-now; BROAD_EXIT=$?; MAX_EXIT=$(( SCRAPE_EXIT > PRICE_EXIT ? SCRAPE_EXIT : PRICE_EXIT )); exit $(( MAX_EXIT > BROAD_EXIT ? MAX_EXIT : BROAD_EXIT ))"
   },
   "keywords": [
     "scraper",

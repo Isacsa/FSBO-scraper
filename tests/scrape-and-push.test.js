@@ -1,6 +1,8 @@
 const assert = require('assert');
 
-const { main, assessExtractionQuality } = require('../scripts/scrape-and-push');
+const { main, assessExtractionQuality, enrichWithPriceHistory } = require('../scripts/scrape-and-push');
+const { upsertListings, emptyState } = require('../src/price-tracker/priceStore');
+const { computeDropMetrics } = require('../src/price-tracker/priceComparator');
 
 console.log('\nScrape-and-push orchestrator tests');
 
@@ -557,6 +559,219 @@ function parseLogLines(stderrCapture) {
   await runTest('assessExtractionQuality returns EMPTY for empty array', async () => {
     const q = assessExtractionQuality([]);
     assert.equal(q.verdict, 'EMPTY');
+  });
+
+  // ── Price tracking integration ──────────────────────────────────────────
+
+  await runTest('enrichWithPriceHistory adds drop metrics when price dropped', async () => {
+    const state = {
+      version: 1,
+      listings: {
+        'https://www.olx.pt/d/anuncio/moradia-t3-123': {
+          external_id: 'ID123',
+          source: 'olx',
+          first_seen_at: '2026-01-01T00:00:00Z',
+          first_seen_price: 200000,
+          last_seen_at: '2026-03-01T00:00:00Z',
+          current_price: 160000,
+          price_history: [
+            { price: 200000, seen_at: '2026-01-01T00:00:00Z' },
+            { price: 160000, seen_at: '2026-03-01T00:00:00Z' },
+          ],
+          location: {},
+          property: {},
+          advertiser: {},
+        },
+      },
+    };
+
+    const items = [{ url: 'https://www.olx.pt/d/anuncio/moradia-t3-123', title: 'T3' }];
+    enrichWithPriceHistory(items, state, { computeDropMetrics });
+
+    assert.ok(items[0]._price_insights, '_price_insights should be set');
+    assert.strictEqual(items[0]._price_insights.has_drop, true);
+    assert.strictEqual(items[0]._price_insights.drop_percent, 20);
+    assert.strictEqual(items[0]._price_insights.drop_absolute, 40000);
+    assert.strictEqual(items[0]._price_insights.first_seen_price, 200000);
+    assert.strictEqual(items[0]._price_insights.current_price, 160000);
+    assert.strictEqual(items[0]._price_insights.price_trend, 'dropping');
+  });
+
+  await runTest('enrichWithPriceHistory sets has_drop false when price is stable', async () => {
+    const state = {
+      version: 1,
+      listings: {
+        'https://www.olx.pt/d/anuncio/moradia-t3-456': {
+          first_seen_at: '2026-01-01T00:00:00Z',
+          first_seen_price: 200000,
+          last_seen_at: '2026-02-01T00:00:00Z',
+          current_price: 200000,
+          price_history: [{ price: 200000, seen_at: '2026-01-01T00:00:00Z' }],
+          location: {},
+          property: {},
+          advertiser: {},
+        },
+      },
+    };
+
+    const items = [{ url: 'https://www.olx.pt/d/anuncio/moradia-t3-456' }];
+    enrichWithPriceHistory(items, state, { computeDropMetrics });
+
+    assert.ok(items[0]._price_insights);
+    assert.strictEqual(items[0]._price_insights.has_drop, false);
+    assert.strictEqual(items[0]._price_insights.first_seen_price, 200000);
+  });
+
+  await runTest('pipeline upserts price state and detects drops in dry-run', async () => {
+    const stdout = createWritableCapture();
+    const stderr = createWritableCapture();
+
+    // Simulate existing price state: listing seen before at 200k
+    const priceState = emptyState();
+    priceState.listings['https://www.olx.pt/d/anuncio/moradia-drop-1'] = {
+      external_id: 'drop-1',
+      source: 'olx',
+      title: 'Moradia com drop',
+      first_seen_at: '2026-01-01T00:00:00Z',
+      first_seen_price: 200000,
+      last_seen_at: '2026-02-01T00:00:00Z',
+      current_price: 200000,
+      price_history: [{ price: 200000, seen_at: '2026-01-01T00:00:00Z' }],
+      location: { district: 'Porto' },
+      property: { type: 'moradia' },
+      advertiser: {},
+    };
+
+    let capturedPayload = null;
+
+    const result = await main({
+      argv: ['--run-now', '--dry-run', '--legacy'],
+      env: {
+        APP_API_URL: 'https://app.example.com',
+        SCRAPER_API_KEY: 'key',
+        SCRAPER_TENANT_ID: 'tid',
+      },
+      stdout,
+      stderr,
+      exit: () => {},
+      deps: {
+        randomUUID: () => 'run-price-test',
+        pullConfigs: async () => [{
+          id: 'cfg-price',
+          area_label: 'Price Drop Test',
+          sources: { olx: 'https://www.olx.pt/imoveis/' },
+          options: {},
+        }],
+        runPlatform: async () => ({
+          results: [{
+            url: 'https://www.olx.pt/d/anuncio/moradia-drop-1',
+            title: 'Moradia com drop',
+            price: 160000,
+            source: 'olx',
+            ad_id: 'drop-1',
+            location: { district: 'Porto' },
+            property: { type: 'moradia' },
+            advertiser: {},
+          }],
+        }),
+        dedupeListInMemory: (items) => ({ unique: items, duplicates: [] }),
+        calculateFsboScores: (items) => items,
+        applyPrecisionGate: (items) => ({
+          accepted: items,
+          rejected: [],
+          uncertain: [],
+          metrics: { accepted_for_push: items.length, rejected_precision: 0, uncertain_blocked: 0 },
+        }),
+        withPriceStateLock: async (_configId, fn) => {
+          return await fn(priceState);
+        },
+        upsertListings,
+        pruneStale: () => 0,
+        computeDropMetrics,
+        buildIngestPayload: (input) => {
+          capturedPayload = input;
+          return { run_id: input.runId, items: input.rawItems, meta: {} };
+        },
+        pushBatch: async () => ({ ok: true }),
+      },
+    });
+
+    assert.strictEqual(result.exitCode, 0);
+    assert.ok(capturedPayload, 'buildIngestPayload should be called');
+
+    const item = capturedPayload.rawItems[0];
+    assert.ok(item._price_insights, 'item should have _price_insights');
+    assert.strictEqual(item._price_insights.has_drop, true);
+    assert.strictEqual(item._price_insights.drop_percent, 20);
+    assert.strictEqual(item._price_insights.drop_absolute, 40000);
+    assert.strictEqual(item._price_insights.first_seen_price, 200000);
+    assert.strictEqual(item._price_insights.current_price, 160000);
+    assert.strictEqual(item._price_insights.price_trend, 'dropping');
+    assert.ok(capturedPayload.priceTrackingMeta, 'priceTrackingMeta should be passed');
+    assert.strictEqual(capturedPayload.priceTrackingMeta.priceChanged, 1);
+  });
+
+  await runTest('pipeline continues gracefully when price tracking fails', async () => {
+    const stdout = createWritableCapture();
+    const stderr = createWritableCapture();
+    let capturedPayload = null;
+
+    const result = await main({
+      argv: ['--run-now', '--dry-run', '--legacy'],
+      env: {
+        APP_API_URL: 'https://app.example.com',
+        SCRAPER_API_KEY: 'key',
+        SCRAPER_TENANT_ID: 'tid',
+      },
+      stdout,
+      stderr,
+      exit: () => {},
+      deps: {
+        randomUUID: () => 'run-fail-price',
+        pullConfigs: async () => [{
+          id: 'cfg-fail-price',
+          area_label: 'Fail Test',
+          sources: { olx: 'https://www.olx.pt/imoveis/' },
+          options: {},
+        }],
+        runPlatform: async () => ({
+          results: [{
+            url: 'https://www.olx.pt/d/anuncio/moradia-ok-1',
+            title: 'Moradia OK',
+            price: 150000,
+            source: 'olx',
+            location: { district: 'Porto' },
+            property: { type: 'moradia' },
+            advertiser: {},
+          }],
+        }),
+        dedupeListInMemory: (items) => ({ unique: items, duplicates: [] }),
+        calculateFsboScores: (items) => items,
+        applyPrecisionGate: (items) => ({
+          accepted: items,
+          rejected: [],
+          uncertain: [],
+          metrics: { accepted_for_push: items.length, rejected_precision: 0, uncertain_blocked: 0 },
+        }),
+        withPriceStateLock: async () => { throw new Error('lock failed'); },
+        upsertListings,
+        pruneStale: () => 0,
+        computeDropMetrics,
+        buildIngestPayload: (input) => {
+          capturedPayload = input;
+          return { run_id: input.runId, items: input.rawItems, meta: {} };
+        },
+        pushBatch: async () => ({ ok: true }),
+      },
+    });
+
+    assert.strictEqual(result.exitCode, 0);
+    assert.ok(capturedPayload, 'payload should still be built despite price tracking failure');
+    assert.strictEqual(capturedPayload.rawItems[0]._price_insights, undefined);
+
+    const logs = parseLogLines(stderr);
+    const warnLog = logs.find(l => l.message.includes('Price tracking failed'));
+    assert.ok(warnLog, 'should log price tracking failure warning');
   });
 })().catch((error) => {
   console.error(error);

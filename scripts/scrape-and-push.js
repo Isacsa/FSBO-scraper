@@ -28,21 +28,17 @@ const { dedupeListInMemory } = require('../pipeline/deduplicate');
 const { applyIncremental } = require('../pipeline/incremental');
 const { calculateFsboScores } = require('../pipeline/fsboScore');
 const { analyzeBatch } = require('../src/services/valuation');
-const { loadPriceState, PRICE_HISTORY_DIR } = require('../src/price-tracker/priceStore');
+const { loadPriceState, upsertListings, pruneStale, withPriceStateLock, PRICE_HISTORY_DIR } = require('../src/price-tracker/priceStore');
+const { computeDropMetrics } = require('../src/price-tracker/priceComparator');
 const { canonicalizeAdUrl } = require('../src/utils/canonicalizeUrl');
 
 /**
- * Enrich items with price history data from the price state store.
- * Adds _price_insights: { days_on_market, price_trend, price_changes, first_seen_price }
+ * Enrich items with price history data from a pre-loaded price state.
+ * Called inside withPriceStateLock after upsert, so state is fresh.
+ *
+ * Adds _price_insights with drop detection from computeDropMetrics.
  */
-function enrichWithPriceHistory(items, configId) {
-  let state;
-  try {
-    state = loadPriceState(configId);
-  } catch (_) {
-    return; // No price history available
-  }
-
+function enrichWithPriceHistory(items, state, deps = defaultDeps) {
   if (!state?.listings || Object.keys(state.listings).length === 0) return;
 
   const now = Date.now();
@@ -64,11 +60,24 @@ function enrichWithPriceHistory(items, configId) {
       else if (last > first) priceTrend = 'rising';
     }
 
+    const dropMetrics = deps.computeDropMetrics(entry);
+
     item._price_insights = {
       days_on_market: daysOnMarket,
       price_trend: priceTrend,
       price_changes: entry.price_history ? entry.price_history.length - 1 : 0,
       first_seen_price: entry.first_seen_price || null,
+      current_price: entry.current_price || null,
+      ...(dropMetrics ? {
+        has_drop: true,
+        drop_percent: dropMetrics.dropPercent,
+        drop_absolute: dropMetrics.dropAbsolute,
+        drop_type: dropMetrics.dropType,
+        step_drop_percent: dropMetrics.stepDropPercent,
+        prev_price: dropMetrics.prevPrice,
+      } : {
+        has_drop: false,
+      }),
     };
   }
 }
@@ -82,6 +91,10 @@ const defaultDeps = {
   dedupeListInMemory,
   applyIncremental,
   calculateFsboScores,
+  upsertListings,
+  pruneStale,
+  withPriceStateLock,
+  computeDropMetrics,
   randomUUID: () => crypto.randomUUID(),
 };
 
@@ -231,6 +244,7 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {})
     errors = [],
     incrementalMeta = null,
     extractionQuality = null,
+    priceTrackingMeta = null,
   }) {
     const payload = deps.buildIngestPayload({
       runId,
@@ -245,6 +259,7 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {})
       errors,
       incrementalMeta,
       extractionQuality,
+      priceTrackingMeta,
     });
 
     if (flags.dryRun) {
@@ -454,11 +469,27 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {})
       }
     }
 
-    // Enrich with price history from price-tracker state (if available)
+    // Price tracking: upsert into state store, detect drops, enrich items
+    let priceTrackingMeta = null;
     try {
-      enrichWithPriceHistory(precision.accepted, configId);
-    } catch (phErr) {
-      log('warn', `Price history enrichment failed: ${phErr.message}`, { configId, platform });
+      priceTrackingMeta = await deps.withPriceStateLock(configId, (state) => {
+        const upsertResult = deps.upsertListings(state, precision.accepted);
+        deps.pruneStale(state, 90);
+        enrichWithPriceHistory(precision.accepted, state, deps);
+        return upsertResult;
+      });
+
+      log('info', `Price tracking: ${priceTrackingMeta.newCount} new, ${priceTrackingMeta.priceChanged} price changes`, {
+        configId,
+        platform,
+        price_new: priceTrackingMeta.newCount,
+        price_changed: priceTrackingMeta.priceChanged,
+      });
+    } catch (ptErr) {
+      log('warn', `Price tracking failed, continuing without price insights: ${ptErr.message}`, {
+        configId,
+        platform,
+      });
     }
 
     // Incremental tracking: annotate NEW / UPDATED / UNCHANGED
@@ -511,6 +542,7 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {})
         runStatus: effectiveRunStatus,
         incrementalMeta,
         extractionQuality: quality,
+        priceTrackingMeta,
       });
 
       runResults.sourcesSucceeded++;

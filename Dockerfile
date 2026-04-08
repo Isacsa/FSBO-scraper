@@ -57,4 +57,4 @@ COPY . .
 RUN mkdir -p data/price-history
 
 # Production orchestrator
-CMD ["node", "scripts/scrape-and-push.js"]
+CMD ["sh", "-c", "node scripts/scrape-and-push.js; node scripts/price-tracker.js; node scripts/broad-scraper.js"]
