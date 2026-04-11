@@ -7,10 +7,16 @@
  */
 
 const { calculatePricePerSqm } = require('./pricePerSqm');
-const { buildBenchmarks, lookupBenchmark } = require('./zoneBenchmarks');
+const { buildBenchmarks, lookupBenchmark, getAreaBand } = require('./zoneBenchmarks');
 const { applyAdjustments, calculateAdjustments } = require('./adjustmentFactors');
 const { calculateOpportunityScore } = require('./opportunityScore');
 const { generateReport } = require('./reportGenerator');
+const {
+  withBenchmarkCacheLock,
+  upsertToBenchmarkCache,
+  pruneStaleBenchmarks,
+  getCacheListingsAsArray,
+} = require('./benchmarkCache');
 
 /**
  * Analyze a single property against an existing benchmark map.
@@ -152,12 +158,91 @@ function analyzeBatchWithDiagnostics(items) {
   return result;
 }
 
+/**
+ * Analyze a batch with persistent benchmark cache.
+ * Accumulates comparables across runs for better benchmark quality.
+ *
+ * @param {string} configId - config UUID for cache file
+ * @param {Object[]} items - cleaned listing items from current batch
+ * @param {Object} [deps] - overridable dependencies for testing
+ * @returns {Promise<{ reports: Object[], stats: Object }>}
+ */
+async function analyzeBatchWithCache(configId, items, deps = {}) {
+  const lockFn = deps.withBenchmarkCacheLock || withBenchmarkCacheLock;
+  const upsertFn = deps.upsertToBenchmarkCache || upsertToBenchmarkCache;
+  const pruneFn = deps.pruneStaleBenchmarks || pruneStaleBenchmarks;
+  const getCacheFn = deps.getCacheListingsAsArray || getCacheListingsAsArray;
+
+  const now = Date.now();
+
+  const { reports, stats, cacheMeta } = await lockFn(configId, async (state) => {
+    // Upsert current batch into cache
+    const upsertResult = upsertFn(state, items);
+    const pruned = pruneFn(state);
+
+    // Build combined listing pool: cache + current batch
+    const cachedListings = getCacheFn(state);
+    const cacheSize = cachedListings.length;
+
+    // Build benchmarks from the full cache (includes current batch)
+    const benchmarkMap = buildBenchmarks(cachedListings, { now });
+
+    // Generate reports only for current batch items
+    const reports = [];
+    let evaluated = 0;
+    let skipped = 0;
+    let opportunities = 0;
+
+    for (const item of items) {
+      const report = generateReport(item, benchmarkMap, null);
+      reports.push(report);
+
+      if (report.evaluable) {
+        evaluated++;
+        if (report.summary.score >= 6) opportunities++;
+      } else {
+        skipped++;
+      }
+    }
+
+    // Sort by score descending (evaluable first)
+    reports.sort((a, b) => {
+      if (a.evaluable && !b.evaluable) return -1;
+      if (!a.evaluable && b.evaluable) return 1;
+      if (a.evaluable && b.evaluable) return (b.summary.score || 0) - (a.summary.score || 0);
+      return 0;
+    });
+
+    return {
+      reports,
+      stats: {
+        total: items.length,
+        evaluated,
+        skipped,
+        opportunities,
+        benchmark_zones: benchmarkMap.size,
+      },
+      cacheMeta: {
+        cacheSize,
+        newInCache: upsertResult.newCount,
+        updatedInCache: upsertResult.updatedCount,
+        pruned,
+      },
+    };
+  });
+
+  stats.cache = cacheMeta;
+  return { reports, stats };
+}
+
 module.exports = {
   analyzeProperty,
   analyzeBatch,
+  analyzeBatchWithCache,
   analyzeBatchWithDiagnostics,
   buildBenchmarks,
   lookupBenchmark,
+  getAreaBand,
   calculatePricePerSqm,
   calculateOpportunityScore,
   applyAdjustments,

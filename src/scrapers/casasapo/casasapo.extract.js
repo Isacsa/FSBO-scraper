@@ -5,17 +5,18 @@
 const { createBrowser, createPage, navigateWithRetry, randomDelay, slowScroll, closePopupsAndOverlays, getRandomUserAgent } = require('./casasapo.utils');
 
 /**
- * Extrai URLs de anúncios da página de listagem
- * Retorna apenas URLs de anúncios SEM telefone visível (candidatos a FSBO)
+ * Extrai dados de cards de anúncios da página de listagem.
+ * Returns rich card objects with price, location, image, features, URL.
+ * This avoids visiting individual ad pages (which trigger 429).
  */
-async function extractListingUrls(page, options = {}) {
+async function extractListingCards(page, options = {}) {
   const filterPrivateOnly = options.filterPrivateOnly !== false;
 
   // Wait for property cards to appear (SPA loads content dynamically)
   try {
     await page.waitForSelector('.property', { timeout: 15000 });
   } catch (_) {
-    console.log('[CasaSapo Extract] ⚠️  No .property cards found, trying scroll...');
+    console.log('[CasaSapo Extract] No .property cards found, trying scroll...');
   }
 
   // Scroll para carregar lazy-load
@@ -24,23 +25,14 @@ async function extractListingUrls(page, options = {}) {
     await randomDelay(1000, 2000);
   }
 
-  // Extrair URLs de anúncios da listagem
+  // Extrair dados dos cards
   const result = await page.evaluate((filterPrivateOnly) => {
-    const urlSet = new Set();
-    const debug = {
-      totalCards: 0,
-      cardsWithLink: 0,
-      validUrls: 0,
-      withPhone: 0,
-      withoutPhone: 0,
-      rejected: []
-    };
-    
+    const cards = [];
+    const seenUrls = new Set();
+
     // Função para verificar se é URL de anúncio individual
     const isAdUrl = (href) => {
       if (!href) return false;
-      
-      // Deve conter /comprar- ou /arrendar- seguido de tipo de imóvel
       const hasPropertyType = (href.includes('/comprar-apartamento') ||
                                href.includes('/comprar-moradia') ||
                                href.includes('/comprar-casa') ||
@@ -53,16 +45,12 @@ async function extractListingUrls(page, options = {}) {
                                href.includes('/arrendar-apartamento') ||
                                href.includes('/arrendar-moradia') ||
                                href.includes('/arrendar-casa')) &&
-                               !href.includes('/comprar-apartamentos/') && // listagem
-                               !href.includes('/comprar-moradias/') &&     // listagem
-                               !href.includes('/comprar-casas/') &&        // listagem
-                               !href.includes('/comprar-terrenos/');        // listagem
-      
-      // Deve terminar em .html OU ter UUID no meio
+                               !href.includes('/comprar-apartamentos/') &&
+                               !href.includes('/comprar-moradias/') &&
+                               !href.includes('/comprar-casas/') &&
+                               !href.includes('/comprar-terrenos/');
       const hasId = href.endsWith('.html') ||
                    href.match(/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/);
-      
-      // NÃO deve ser URL de listagem (plural forms)
       const isListing = href.includes('/comprar-apartamentos/') ||
                        href.includes('/comprar-moradias/') ||
                        href.includes('/comprar-casas/') ||
@@ -72,194 +60,301 @@ async function extractListingUrls(page, options = {}) {
                        href.includes('/es-es/') ||
                        href.includes('/en-en/') ||
                        (href.endsWith('/') && !href.endsWith('.html'));
-      
       return hasPropertyType && hasId && !isListing;
     };
-    
-    // Função para verificar se tem classe "property-phone" (indica agência)
-    const hasPhoneButton = (card) => {
-      if (!card) return false;
-      
-      // Procurar especificamente por elemento com classe exata "property-phone"
-      // Deve estar dentro de property-contacts
-      const phoneElement = card.querySelector('.property-phone, [class="property-phone"]');
-      return !!phoneElement;
-    };
-    
-    // Método 1: Procurar por cards com classe exata "property" (card principal)
-    const propertyCards = document.querySelectorAll('.property, [class="property"]');
-    debug.totalCards = propertyCards.length;
-    
-    propertyCards.forEach((card, index) => {
-      // Procurar link dentro do card (pode estar em vários lugares)
-      const link = card.querySelector('a[href*="/comprar-"]');
-      if (!link) {
-        debug.rejected.push({ card: index + 1, reason: 'sem link /comprar-' });
-        return;
-      }
-      
-      debug.cardsWithLink++;
-      const href = link.getAttribute('href');
-      
-      if (!href) {
-        debug.rejected.push({ card: index + 1, reason: 'href vazio' });
-        return;
-      }
-      
-      if (!isAdUrl(href)) {
-        debug.rejected.push({ card: index + 1, reason: 'URL inválido', href: href.substring(0, 80) });
-        return;
-      }
-      
-      debug.validUrls++;
-      
-      // Verificar se tem elemento com classe "property-phone" dentro deste card
-      const hasPhoneBtn = hasPhoneButton(card);
-      
-      if (hasPhoneBtn) {
-        debug.withPhone++;
-        if (!filterPrivateOnly) {
-          const fullUrl = href.startsWith('http') ? href : `https://casa.sapo.pt${href}`;
-          urlSet.add(fullUrl);
-        }
-      } else {
-        debug.withoutPhone++;
-        const fullUrl = href.startsWith('http') ? href : `https://casa.sapo.pt${href}`;
-        urlSet.add(fullUrl);
-      }
-    });
-    
-    return {
-      urls: Array.from(urlSet),
-      debug: debug
-    };
-  }, filterPrivateOnly);
-  
-  const urls = result.urls;
 
-  return urls;
+    const propertyCards = document.querySelectorAll('.property, [class="property"]');
+
+    propertyCards.forEach((card) => {
+      const link = card.querySelector('a[href*="/comprar-"]') || card.querySelector('a[href*="/arrendar-"]');
+      if (!link) return;
+      const href = link.getAttribute('href');
+      if (!href || !isAdUrl(href)) return;
+
+      const fullUrl = href.startsWith('http') ? href : `https://casa.sapo.pt${href}`;
+      if (seenUrls.has(fullUrl)) return;
+      seenUrls.add(fullUrl);
+
+      // Check for property-phone (agency indicator)
+      const hasPhone = !!card.querySelector('.property-phone, [class="property-phone"]');
+      if (hasPhone && filterPrivateOnly) return;
+
+      // Extract price from card
+      let price = null;
+      const priceEl = card.querySelector('.property-price, [class*="property-price"]');
+      if (priceEl) {
+        const priceText = priceEl.textContent || '';
+        const priceMatch = priceText.match(/(\d{1,3}(?:[\s.]?\d{3})*)\s*€/);
+        if (priceMatch) price = priceMatch[0].trim();
+      }
+      // Fallback: search entire card for price pattern
+      if (!price) {
+        const cardText = card.textContent || '';
+        const priceMatch = cardText.match(/(\d{1,3}(?:[\s.]?\d{3})*)\s*€/);
+        if (priceMatch) {
+          const num = parseInt(priceMatch[1].replace(/[\s.]/g, ''));
+          if (num > 1000) price = priceMatch[0].trim();
+        }
+      }
+
+      // Extract location from card
+      let location = null;
+      const locEl = card.querySelector('.property-location, [class*="property-location"]');
+      if (locEl) {
+        location = locEl.textContent?.trim() || null;
+      }
+      if (!location) {
+        const locEl2 = card.querySelector('[class*="location"], address');
+        if (locEl2) location = locEl2.textContent?.trim() || null;
+      }
+
+      // Extract title from card link or heading
+      let title = null;
+      const titleEl = card.querySelector('.property-title, [class*="property-title"], h2, h3');
+      if (titleEl) {
+        title = titleEl.textContent?.trim() || null;
+      }
+      if (!title && link.textContent) {
+        const linkText = link.textContent.trim();
+        // Only use link text if it looks like a title (not just a price or location)
+        if (linkText.length > 10 && !linkText.match(/^\d/) && !linkText.includes('€')) {
+          title = linkText;
+        }
+      }
+
+      // Extract image(s) from card
+      const photos = [];
+      card.querySelectorAll('img[src], img[data-src]').forEach(img => {
+        const src = img.getAttribute('src') || img.getAttribute('data-src');
+        if (src && !src.includes('placeholder') && !src.includes('logo') && !src.includes('data:image')) {
+          const fullSrc = src.startsWith('http') ? src : `https://casa.sapo.pt${src}`;
+          if (!photos.includes(fullSrc)) photos.push(fullSrc);
+        }
+      });
+
+      // Extract features from card (e.g., "T3", "Com Garagem", area info)
+      const features = [];
+      card.querySelectorAll('.property-features li, [class*="property-feature"], [class*="feature"]').forEach(el => {
+        const text = el.textContent?.trim();
+        if (text && text.length > 1 && text.length < 100) {
+          features.push(text);
+        }
+      });
+
+      // Extract tipology/type from card text or features
+      let tipology = null;
+      let propertyType = null;
+      const cardFullText = card.textContent || '';
+      const tipMatch = cardFullText.match(/\bT(\d+)\b/);
+      if (tipMatch) tipology = `T${tipMatch[1]}`;
+
+      // Infer type from URL
+      if (fullUrl.includes('/comprar-apartamento')) propertyType = 'apartamento';
+      else if (fullUrl.includes('/comprar-moradia') || fullUrl.includes('/comprar-casa')) propertyType = 'moradia';
+      else if (fullUrl.includes('/comprar-terreno')) propertyType = 'terreno';
+      else if (fullUrl.includes('/comprar-quinta')) propertyType = 'quinta';
+      else if (fullUrl.includes('/comprar-loja')) propertyType = 'loja';
+
+      // Extract area if visible in card
+      let area = null;
+      const areaMatch = cardFullText.match(/(\d+)\s*m[²2]/);
+      if (areaMatch) area = areaMatch[1];
+
+      cards.push({
+        url: fullUrl,
+        price,
+        location,
+        title,
+        photos,
+        features,
+        tipology,
+        propertyType,
+        area,
+        hasPhone,
+        _from_card: true,
+      });
+    });
+
+    return cards;
+  }, filterPrivateOnly);
+
+  return result;
 }
 
 /**
- * Extrai todas as URLs de anúncios de todas as páginas
+ * Extrai todos os cards de anúncios de todas as páginas.
+ * Returns rich card objects with data extracted from listing cards.
+ *
+ * @param {import('playwright').Page} page - existing page from caller
+ * @param {string} listingUrl - listing URL
+ * @param {Object} options
+ * @returns {Promise<Object[]>} array of card data objects
  */
-async function extractAllListingUrls(listingUrl, options = {}) {
+async function extractAllListingCards(page, listingUrl, options = {}) {
   const {
     maxPages = null,
     timeout = 40000,
-    headless = true,  // Default true, mas será validado por shouldRunHeadless() em createBrowser
     filterPrivateOnly = true
   } = options;
-  
-  console.log('[CasaSapo Extract] 📋 Iniciando extração de listagem...');
-  console.log(`[CasaSapo Extract] URL: ${listingUrl}`);
-  
-  const browser = await createBrowser({ 
-    headless, 
-    timeout 
+
+  console.log(`[CasaSapo Extract] Iniciando extracao de listagem: ${listingUrl}`);
+
+  const allCards = [];
+  const seenUrls = new Set();
+  let currentPage = 1;
+
+  // Navigate to first page
+  await navigateWithRetry(page, listingUrl, { timeout });
+  await randomDelay(3000, 5000);
+
+  // Close popups — cookie consent may trigger a navigation/reload
+  try {
+    await closePopupsAndOverlays(page);
+    await page.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {});
+  } catch (_) {
+    console.log('[CasaSapo Extract] Re-navigating after popup handling...');
+    await navigateWithRetry(page, listingUrl, { timeout });
+  }
+  await randomDelay(2000, 3000);
+
+  while (true) {
+    const pageCards = await extractListingCards(page, { filterPrivateOnly });
+    let newOnPage = 0;
+    for (const card of pageCards) {
+      if (!seenUrls.has(card.url)) {
+        seenUrls.add(card.url);
+        allCards.push(card);
+        newOnPage++;
+      }
+    }
+
+    console.log(`[CasaSapo Extract] Pagina ${currentPage}: ${newOnPage} anuncios (total: ${allCards.length})`);
+
+    if (maxPages && currentPage >= maxPages) {
+      console.log(`[CasaSapo Extract] Limite de ${maxPages} paginas atingido`);
+      break;
+    }
+
+    // Check for next page
+    const hasNextPage = await page.evaluate(() => {
+      const nextButtons = Array.from(document.querySelectorAll('a, button'));
+      const hasNextButton = nextButtons.some(btn => {
+        const text = btn.textContent?.toLowerCase() || '';
+        return (text.includes('próxima') || text.includes('seguinte') || text.includes('next')) &&
+               !btn.disabled && !btn.classList.contains('disabled');
+      });
+
+      const currentPn = parseInt(new URL(window.location.href).searchParams.get('pn') || '1');
+      const pageLinks = Array.from(document.querySelectorAll('a[href*="pn="]'));
+      const hasNextLink = pageLinks.some(link => {
+        const href = link.getAttribute('href');
+        const match = href.match(/pn=(\d+)/);
+        return match && parseInt(match[1]) > currentPn;
+      });
+
+      return hasNextButton || hasNextLink;
+    });
+
+    if (!hasNextPage) {
+      console.log('[CasaSapo Extract] Ultima pagina alcancada');
+      break;
+    }
+
+    currentPage++;
+    const nextPageUrl = await page.evaluate((cp) => {
+      const url = new URL(window.location.href);
+      url.searchParams.set('pn', cp);
+      return url.toString();
+    }, currentPage);
+
+    await randomDelay(1500, 3200);
+    try {
+      await navigateWithRetry(page, nextPageUrl, { timeout });
+    } catch (navErr) {
+      if (navErr.name === 'HttpError') {
+        console.warn(`[CasaSapo Extract] HTTP ${navErr.status} na pagina ${currentPage} — parando com ${allCards.length} anuncios`);
+        break;
+      }
+      throw navErr;
+    }
+    await randomDelay(3000, 5000);
+    await closePopupsAndOverlays(page);
+    await randomDelay(1000, 2000);
+  }
+
+  console.log(`[CasaSapo Extract] Listagem concluida: ${allCards.length} anuncios`);
+  return allCards;
+}
+
+/**
+ * Backward-compatible wrapper — returns just URLs.
+ * @deprecated Use extractAllListingCards instead.
+ */
+async function extractAllListingUrls(page, listingUrl, options = {}) {
+  const cards = await extractAllListingCards(page, listingUrl, options);
+  return cards.map(c => c.url);
+}
+
+/**
+ * Extrai dados de um anúncio individual reusing an existing page.
+ * This avoids opening a new browser per ad which triggers rate limiting.
+ *
+ * @param {import('playwright').Page} page - existing page
+ * @param {string} adUrl - ad URL
+ * @param {Object} options
+ */
+async function extractAdDetailsWithPage(page, adUrl, options = {}) {
+  const { timeout = 60000 } = options;
+
+  await navigateWithRetry(page, adUrl, { timeout });
+  await randomDelay(2000, 3000);
+
+  // Close popups
+  await closePopupsAndOverlays(page);
+  await randomDelay(1000, 2000);
+
+  // Scroll to load lazy content
+  for (let i = 0; i < 6; i++) {
+    await slowScroll(page, 'down', 500);
+    await randomDelay(800, 1500);
+  }
+
+  await randomDelay(1000, 2000);
+
+  // Extract data
+  const rawData = await _extractPageData(page);
+  rawData.phone = null;
+  rawData.url = adUrl;
+  return rawData;
+}
+
+/**
+ * Extrai dados de um anúncio individual (standalone — opens own browser).
+ * Kept for backward compatibility with controllers/tests.
+ */
+async function extractAdDetails(adUrl, options = {}) {
+  const {
+    timeout = 60000,
+    headless = true
+  } = options;
+
+  const browser = await createBrowser({
+    headless,
+    timeout
   });
-  
+
   const { page, context } = await createPage(browser, {
     timeout,
     locale: 'pt-PT',
     timezoneId: 'Europe/Lisbon',
     userAgent: getRandomUserAgent()
   });
-  
-  const allUrls = new Set();
-  let currentPage = 1;
-  
+
   try {
-    // Navegar para primeira página
-    console.log(`[CasaSapo Extract] 📄 Carregando página ${currentPage}...`);
-    await navigateWithRetry(page, listingUrl, { timeout });
-    await randomDelay(3000, 5000);
-
-    // Fechar popups — cookie consent may trigger a navigation/reload on CasaSapo
-    try {
-      await closePopupsAndOverlays(page);
-      // Wait for any navigation triggered by cookie consent to settle
-      await page.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {});
-    } catch (_) {
-      // Navigation may destroy context; re-navigate if needed
-      console.log('[CasaSapo Extract] ⚠️  Re-navigating after popup handling...');
-      await navigateWithRetry(page, listingUrl, { timeout });
-    }
-    await randomDelay(2000, 3000);
-    
-    while (true) {
-      // Extrair URLs desta página
-      const pageUrls = await extractListingUrls(page, { filterPrivateOnly });
-      pageUrls.forEach(url => allUrls.add(url));
-      
-      console.log(`[CasaSapo Extract] 📊 Página ${currentPage}: ${pageUrls.length} anúncios (total acumulado: ${allUrls.size})`);
-      
-      // Verificar limite de páginas
-      if (maxPages && currentPage >= maxPages) {
-        console.log(`[CasaSapo Extract] ⏹️  Limite de ${maxPages} páginas atingido`);
-        break;
-      }
-      
-      // Verificar se há próxima página
-      const hasNextPage = await page.evaluate(() => {
-        // Procurar botão "Próxima" ou "Seguinte"
-        const nextButtons = Array.from(document.querySelectorAll('a, button'));
-        const hasNextButton = nextButtons.some(btn => {
-          const text = btn.textContent?.toLowerCase() || '';
-          return (text.includes('próxima') || text.includes('seguinte') || text.includes('next')) &&
-                 !btn.disabled && !btn.classList.contains('disabled');
-        });
-        
-        // Também verificar se há link com pn= na URL
-        const currentPn = parseInt(new URL(window.location.href).searchParams.get('pn') || '1');
-        const pageLinks = Array.from(document.querySelectorAll('a[href*="pn="]'));
-        const hasNextLink = pageLinks.some(link => {
-          const href = link.getAttribute('href');
-          const match = href.match(/pn=(\d+)/);
-          return match && parseInt(match[1]) > currentPn;
-        });
-        
-        return hasNextButton || hasNextLink;
-      });
-      
-      if (!hasNextPage) {
-        console.log(`[CasaSapo Extract] ✅ Última página alcançada`);
-        break;
-      }
-      
-      // Navegar para próxima página (Casa Sapo usa parâmetro "pn")
-      currentPage++;
-      const nextPageUrl = await page.evaluate((currentPage) => {
-        const url = new URL(window.location.href);
-        url.searchParams.set('pn', currentPage);
-        return url.toString();
-      }, currentPage);
-      
-      console.log(`[CasaSapo Extract] 📄 Carregando página ${currentPage}...`);
-      await randomDelay(1500, 3200);
-      try {
-        await navigateWithRetry(page, nextPageUrl, { timeout });
-      } catch (navErr) {
-        // 429/403 on pagination — stop but keep what we have
-        if (navErr.name === 'HttpError') {
-          console.warn(`[CasaSapo Extract] HTTP ${navErr.status} na página ${currentPage} — parando paginação, mantendo ${allUrls.size} anúncios`);
-          break;
-        }
-        throw navErr;
-      }
-      await randomDelay(3000, 5000);
-
-      // Fechar popups novamente
-      await closePopupsAndOverlays(page);
-      await randomDelay(1000, 2000);
-    }
-
-    console.log(`[CasaSapo Extract] ✅ Extração de listagem concluída: ${allUrls.size} anúncios únicos sem telefone`);
-
-    return Array.from(allUrls);
-
+    const rawData = await extractAdDetailsWithPage(page, adUrl, { timeout });
+    return rawData;
   } catch (error) {
-    console.error('[CasaSapo Extract] ❌ Erro durante extração de listagem:', error.message);
+    console.error(`[CasaSapo Extract] Erro ao extrair anuncio ${adUrl}:`, error.message);
     throw error;
   } finally {
     await context.close();
@@ -268,47 +363,9 @@ async function extractAllListingUrls(listingUrl, options = {}) {
 }
 
 /**
- * Extrai dados de um anúncio individual
+ * Core page data extraction — used by both extractAdDetails variants.
  */
-async function extractAdDetails(adUrl, options = {}) {
-  const {
-    timeout = 60000,
-    headless = true  // Default true, mas será validado por shouldRunHeadless() em createBrowser
-  } = options;
-  
-  console.log(`[CasaSapo Extract] 🔍 Extraindo detalhes: ${adUrl}`);
-  
-  const browser = await createBrowser({ 
-    headless, 
-    timeout 
-  });
-  
-  const { page, context } = await createPage(browser, {
-    timeout,
-    locale: 'pt-PT',
-    timezoneId: 'Europe/Lisbon',
-    userAgent: getRandomUserAgent()
-  });
-  
-  try {
-    // Navegar para anúncio
-    await navigateWithRetry(page, adUrl, { timeout });
-    await randomDelay(2000, 3000);
-    
-    // Fechar popups
-    await closePopupsAndOverlays(page);
-    await randomDelay(1000, 2000);
-    
-    // Scroll completo para carregar conteúdo
-    for (let i = 0; i < 8; i++) {
-      await slowScroll(page, 'down', 500);
-      await randomDelay(1000, 2000);
-    }
-    
-    // Aguardar um pouco mais para garantir que o conteúdo está carregado
-    await randomDelay(2000, 3000);
-    
-    // Extrair dados básicos
+async function _extractPageData(page) {
     const rawData = await page.evaluate(() => {
       const data = {};
       
@@ -674,24 +731,13 @@ async function extractAdDetails(adUrl, options = {}) {
       return data;
     });
     
-    // Nota: CasaSapo não expõe contato de particulares, então não tentamos extrair telefone
-    // Apenas anúncios de agências têm telefone visível, mas filtramos esses na listagem
-    rawData.phone = null;
-    rawData.url = adUrl;
-    
     return rawData;
-    
-  } catch (error) {
-    console.error(`[CasaSapo Extract] ❌ Erro ao extrair anúncio ${adUrl}:`, error.message);
-    throw error;
-  } finally {
-    await context.close();
-    await browser.close();
-  }
 }
 
 module.exports = {
   extractAllListingUrls,
-  extractAdDetails
+  extractAllListingCards,
+  extractAdDetails,
+  extractAdDetailsWithPage,
 };
 

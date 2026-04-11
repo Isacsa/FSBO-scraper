@@ -36,7 +36,8 @@ function generateReport(item, benchmarkMap, allListings = null) {
     effectiveMap = buildBenchmarks(allListings, { excludeUrl: item.url });
   }
 
-  const benchmark = lookupBenchmark(loc, prop.type, prop.tipology, effectiveMap);
+  const area = ppsm.area_used;
+  const benchmark = lookupBenchmark(loc, prop.type, prop.tipology, effectiveMap, { area });
   if (!benchmark) {
     return {
       evaluable: false,
@@ -81,6 +82,15 @@ function generateReport(item, benchmarkMap, allListings = null) {
         ? 'FSBO - sem comissao de agencia (~5% poupanca)'
         : null,
       days_online: daysOnline !== null ? `${daysOnline} dias no mercado` : null,
+    },
+    benchmark_details: {
+      comparables_count: benchmark.stats.count,
+      comparables_before_outlier_removal: benchmark.stats.count_before_outlier_removal,
+      area_range: benchmark.stats.area_range || null,
+      price_sqm_range: { min: benchmark.stats.min, max: benchmark.stats.max },
+      fallback_used: benchmark.fallback_used || false,
+      fallback_level: benchmark.level,
+      date_range: benchmark.stats.date_range || null,
     },
     reasons,
     confidence: benchmark.stats.confidence,
@@ -138,7 +148,9 @@ function buildReasons(opportunity, adjustment, benchmark, fsboScore, daysOnline)
     reasons.push(`${daysOnline} dias no mercado (possivel margem de negociacao)`);
   }
 
-  if (benchmark.stats.confidence === 'low') {
+  if (benchmark.stats.confidence === 'marginal') {
+    reasons.push(`AVISO: Apenas ${benchmark.stats.count} comparaveis - valor indicativo, nao definitivo`);
+  } else if (benchmark.stats.confidence === 'low') {
     reasons.push('Poucos comparaveis na zona (confianca baixa)');
   }
 

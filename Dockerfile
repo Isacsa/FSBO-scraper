@@ -53,8 +53,8 @@ ENV NODE_ENV=production
 # Copy application code
 COPY . .
 
-# Ensure data directories exist for price state and incremental tracking
-RUN mkdir -p data/price-history
+# Ensure data directories exist for price state, incremental tracking, and benchmark cache
+RUN mkdir -p data/price-history data/benchmark-cache
 
 # Production orchestrator
 CMD ["sh", "-c", "node scripts/scrape-and-push.js; node scripts/price-tracker.js; node scripts/broad-scraper.js"]

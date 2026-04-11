@@ -98,10 +98,10 @@ async function normalizeAd(parsed, options = {}) {
   // Extrair tipo e tipologia
   let propertyType = null;
   let tipology = null;
-  
+
   const combinedText = `${parsed.title || ''} ${parsed.description || ''}`.toLowerCase();
-  
-  // Determinar tipo
+
+  // Determinar tipo from text
   if (combinedText.includes('apartamento')) {
     propertyType = 'apartamento';
   } else if (combinedText.includes('moradia') || combinedText.includes('casa') || combinedText.includes('villa')) {
@@ -113,11 +113,21 @@ async function normalizeAd(parsed, options = {}) {
   } else if (combinedText.includes('escritório') || combinedText.includes('escritorio')) {
     propertyType = 'escritório';
   }
-  
+
+  // Fallback: use card-sourced type (inferred from URL on listing page)
+  if (!propertyType && parsed._card_type) {
+    propertyType = parsed._card_type;
+  }
+
   // Extrair tipologia
   const tipologyMatch = combinedText.match(/t([0-9]+)/i);
   if (tipologyMatch) {
     tipology = `T${tipologyMatch[1]}`;
+  }
+
+  // Fallback: use card-sourced tipology
+  if (!tipology && parsed._card_tipology) {
+    tipology = parsed._card_tipology;
   }
   
   // Extrair áreas das specifications primeiro, depois das features
@@ -206,7 +216,12 @@ async function normalizeAd(parsed, options = {}) {
       }
     }
   });
-  
+
+  // Fallback: use card-sourced area when detail page data is missing
+  if (!area_useful && !area_total && parsed._card_area) {
+    area_useful = parsed._card_area;
+  }
+
   // Parsear datas
   let published_date = null;
   let updated_date = null;
@@ -240,6 +255,20 @@ async function normalizeAd(parsed, options = {}) {
     phone: parsed.phone || null,
   });
   
+  // Generate title from available data when missing (card-only listings)
+  let title = parsed.title;
+  if (!title && (propertyType || tipology || parsed.location_text)) {
+    const parts = [];
+    if (propertyType) parts.push(propertyType.charAt(0).toUpperCase() + propertyType.slice(1));
+    if (tipology) parts.push(tipology);
+    if (parsed.location_text) {
+      // Use first part of location (usually parish/municipality)
+      const locPart = parsed.location_text.split(',')[0].trim();
+      if (locPart) parts.push(`em ${locPart}`);
+    }
+    if (parts.length > 0) title = parts.join(' ');
+  }
+
   // Montar objeto final
   const normalized = {
     source: 'casasapo',
@@ -249,7 +278,7 @@ async function normalizeAd(parsed, options = {}) {
     updated_date: updated_date,
     timestamp: now,
     days_online: days_online !== null ? days_online.toString() : null,
-    title: parsed.title || null,
+    title: title || null,
     description: parsed.description || null,
     location: location,
     price: parsed.price || null,

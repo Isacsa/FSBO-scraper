@@ -27,7 +27,7 @@ const { runPlatform } = require('../src/core/runPlatform');
 const { dedupeListInMemory } = require('../pipeline/deduplicate');
 const { applyIncremental } = require('../pipeline/incremental');
 const { calculateFsboScores } = require('../pipeline/fsboScore');
-const { analyzeBatch } = require('../src/services/valuation');
+const { analyzeBatch, analyzeBatchWithCache } = require('../src/services/valuation');
 const { loadPriceState, upsertListings, pruneStale, withPriceStateLock, PRICE_HISTORY_DIR } = require('../src/price-tracker/priceStore');
 const { computeDropMetrics } = require('../src/price-tracker/priceComparator');
 const { canonicalizeAdUrl } = require('../src/utils/canonicalizeUrl');
@@ -95,6 +95,7 @@ const defaultDeps = {
   pruneStale,
   withPriceStateLock,
   computeDropMetrics,
+  analyzeBatchWithCache,
   randomUUID: () => crypto.randomUUID(),
 };
 
@@ -423,9 +424,9 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {})
       continue;
     }
 
-    // Valuation: score each accepted item against batch benchmarks
+    // Valuation: score each accepted item against cached benchmarks
     try {
-      const { reports, stats } = analyzeBatch(precision.accepted);
+      const { reports, stats } = await deps.analyzeBatchWithCache(configId, precision.accepted);
       // Map reports back to items by URL
       const reportByUrl = new Map();
       for (const report of reports) {
@@ -445,16 +446,19 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {})
             label: report.summary.verdict,
             deviation_pct: report.summary.deviation_pct,
             benchmark_price_sqm: report.summary.benchmark_price_per_sqm,
+            adjusted_benchmark_sqm: report.summary.adjusted_benchmark,
             price_per_sqm: report.summary.price_per_sqm,
             confidence: report.confidence,
             benchmark_level: report.benchmark_level,
+            comparables_count: report.benchmark_details?.comparables_count || null,
             bonuses,
           };
         } else {
           item._valuation = null;
         }
       }
-      log('info', `Valuation: ${stats.evaluated} evaluated, ${stats.skipped} skipped, ${stats.opportunities} opportunities`, {
+      const cacheInfo = stats.cache ? ` (cache: ${stats.cache.cacheSize} total, ${stats.cache.newInCache} new)` : '';
+      log('info', `Valuation: ${stats.evaluated} evaluated, ${stats.skipped} skipped, ${stats.opportunities} opportunities${cacheInfo}`, {
         configId,
         platform,
         valuation_stats: stats,

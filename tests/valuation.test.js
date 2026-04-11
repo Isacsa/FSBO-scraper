@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 const { calculatePricePerSqm } = require('../src/services/valuation/pricePerSqm');
-const { median, percentile, removeOutliers, calculateStats, buildBenchmarks, lookupBenchmark, getConfidence } = require('../src/services/valuation/zoneBenchmarks');
+const { median, percentile, removeOutliers, calculateStats, buildBenchmarks, lookupBenchmark, getConfidence, getAreaBand, weightedMedian } = require('../src/services/valuation/zoneBenchmarks');
 const { calculateAdjustments, applyAdjustments, parseFloor } = require('../src/services/valuation/adjustmentFactors');
 const { calculateOpportunityScore, getLabel } = require('../src/services/valuation/opportunityScore');
 const { generateReport } = require('../src/services/valuation/reportGenerator');
@@ -91,20 +91,30 @@ console.log('  Valuation module tests\n');
   assert.ok(cleaned.includes(200), 'should keep normal values');
   console.log('    outlier removal');
 
-  // Confidence levels
+  // Confidence levels (high=20, medium=12, low=8, marginal=3)
+  assert.strictEqual(getConfidence(25), 'high');
   assert.strictEqual(getConfidence(20), 'high');
-  assert.strictEqual(getConfidence(15), 'high');
+  assert.strictEqual(getConfidence(15), 'medium');
   assert.strictEqual(getConfidence(12), 'medium');
-  assert.strictEqual(getConfidence(10), 'medium');
-  assert.strictEqual(getConfidence(7), 'low');
-  assert.strictEqual(getConfidence(5), 'low');
-  assert.strictEqual(getConfidence(3), 'insufficient');
+  assert.strictEqual(getConfidence(10), 'low');
+  assert.strictEqual(getConfidence(8), 'low');
+  assert.strictEqual(getConfidence(5), 'marginal');
+  assert.strictEqual(getConfidence(3), 'marginal');
+  assert.strictEqual(getConfidence(2), 'insufficient');
   console.log('    confidence levels');
 
-  // calculateStats needs >= MIN_COMPARABLES after outlier removal
-  const tooFew = [100, 200, 300];
+  // calculateStats needs >= MIN_COMPARABLES (3) after outlier removal
+  const tooFew = [100, 200];
   assert.strictEqual(calculateStats(tooFew), null);
   console.log('    too few for stats');
+
+  // 3 items: exactly at MIN_COMPARABLES, should work
+  const justEnough = [1000, 1100, 1200];
+  const statsMin = calculateStats(justEnough);
+  assert.ok(statsMin !== null);
+  assert.strictEqual(statsMin.count, 3);
+  assert.strictEqual(statsMin.confidence, 'marginal');
+  console.log('    marginal confidence at MIN_COMPARABLES');
 
   const enough = [1000, 1100, 1200, 1300, 1400, 1500, 1600];
   const stats = calculateStats(enough);
@@ -112,6 +122,18 @@ console.log('  Valuation module tests\n');
   assert.strictEqual(stats.median, 1300);
   assert.strictEqual(stats.count, 7);
   console.log('    valid stats');
+
+  // Enriched entries with scraped_at
+  const enriched = [
+    { value: 1000, scraped_at: '2026-04-09T00:00:00Z' },
+    { value: 1100, scraped_at: '2026-04-09T00:00:00Z' },
+    { value: 1200, scraped_at: '2026-04-09T00:00:00Z' },
+    { value: 1300, scraped_at: '2026-04-09T00:00:00Z' },
+  ];
+  const statsEnriched = calculateStats(enriched, Date.now());
+  assert.ok(statsEnriched !== null);
+  assert.strictEqual(statsEnriched.count, 4);
+  console.log('    enriched entries work');
 
   console.log('    all passed\n');
 }
@@ -135,22 +157,33 @@ console.log('  Valuation module tests\n');
   const map = buildBenchmarks(listings);
   assert.ok(map.size > 0, 'should have benchmarks');
 
-  // Exact lookup
+  // Exact lookup with area
   const b1 = lookupBenchmark(
+    { district: 'Porto', municipality: 'Porto', parish: 'Cedofeita' },
+    'apartamento', 'T2', map, { area: 80 },
+  );
+  assert.ok(b1 !== null, 'should find exact benchmark');
+  assert.strictEqual(b1.level, 'freguesia+tipo+tipologia+area');
+  assert.strictEqual(b1.fallback_used, false);
+  console.log('    exact lookup with area');
+
+  // Lookup without area — falls back to non-area level
+  const b1b = lookupBenchmark(
     { district: 'Porto', municipality: 'Porto', parish: 'Cedofeita' },
     'apartamento', 'T2', map,
   );
-  assert.ok(b1 !== null, 'should find exact benchmark');
-  assert.strictEqual(b1.level, 'freguesia+tipo+tipologia');
-  console.log('    exact lookup');
+  assert.ok(b1b !== null, 'should find benchmark without area');
+  assert.strictEqual(b1b.level, 'freguesia+tipo+tipologia');
+  console.log('    lookup without area');
 
   // Fallback: different parish same municipality
   const b2 = lookupBenchmark(
     { district: 'Porto', municipality: 'Porto', parish: 'Bonfim' },
-    'apartamento', 'T2', map,
+    'apartamento', 'T2', map, { area: 80 },
   );
   assert.ok(b2 !== null, 'should fallback to concelho level');
   assert.ok(b2.level.startsWith('concelho'), `expected concelho fallback, got ${b2.level}`);
+  assert.strictEqual(b2.fallback_used, true);
   console.log('    fallback to concelho');
 
   // Fallback: different municipality same district
@@ -552,38 +585,39 @@ console.log('  Valuation module tests\n');
 
   const { MIN_COMPARABLES } = require('../src/services/valuation/constants');
 
-  // 4 items → should NOT produce a benchmark (below MIN_COMPARABLES)
-  const fourItems = [];
-  for (let i = 0; i < 4; i++) {
-    fourItems.push({
+  // 2 items → should NOT produce a benchmark (below MIN_COMPARABLES=3)
+  const twoItems = [];
+  for (let i = 0; i < 2; i++) {
+    twoItems.push({
       price: 100000 + i * 10000,
       property: { type: 'apartamento', tipology: 'T2', area_useful: 80 },
       location: { district: 'Faro', municipality: 'Faro', parish: 'Se' },
-      url: `https://example.com/four-${i}`,
+      url: `https://example.com/two-${i}`,
     });
   }
-  const fourBench = buildBenchmarks(fourItems);
-  const fourLookup = lookupBenchmark(
+  const twoBench = buildBenchmarks(twoItems);
+  const twoLookup = lookupBenchmark(
     { district: 'Faro', municipality: 'Faro', parish: 'Se' },
-    'apartamento', 'T2', fourBench
+    'apartamento', 'T2', twoBench
   );
-  assert.strictEqual(fourLookup, null, '4 items should produce no benchmark');
-  console.log(`    4 items -> no benchmark (MIN_COMPARABLES=${MIN_COMPARABLES})`);
+  assert.strictEqual(twoLookup, null, '2 items should produce no benchmark');
+  console.log(`    2 items -> no benchmark (MIN_COMPARABLES=${MIN_COMPARABLES})`);
 
-  // 5 items → should produce a benchmark
-  const fiveItems = [...fourItems, {
-    price: 150000,
+  // 3 items → should produce a benchmark (marginal confidence)
+  const threeItems = [...twoItems, {
+    price: 120000,
     property: { type: 'apartamento', tipology: 'T2', area_useful: 80 },
     location: { district: 'Faro', municipality: 'Faro', parish: 'Se' },
-    url: 'https://example.com/five-4',
+    url: 'https://example.com/three-2',
   }];
-  const fiveBench = buildBenchmarks(fiveItems);
-  const fiveLookup = lookupBenchmark(
+  const threeBench = buildBenchmarks(threeItems);
+  const threeLookup = lookupBenchmark(
     { district: 'Faro', municipality: 'Faro', parish: 'Se' },
-    'apartamento', 'T2', fiveBench
+    'apartamento', 'T2', threeBench
   );
-  assert.ok(fiveLookup !== null, '5 items should produce a benchmark');
-  console.log(`    5 items -> benchmark exists (median: ${fiveLookup.stats.median})`);
+  assert.ok(threeLookup !== null, '3 items should produce a benchmark');
+  assert.strictEqual(threeLookup.stats.confidence, 'marginal');
+  console.log(`    3 items -> benchmark with marginal confidence (median: ${threeLookup.stats.median})`);
 
   // 5 items with 1 extreme outlier → may drop below MIN after outlier removal
   const fiveWithOutlier = [];
@@ -734,6 +768,292 @@ console.log('  Valuation module tests\n');
   } else {
     console.log('  integration: cross-portal skipped (need >= 2 data files)\n');
   }
+}
+
+// ─── Area bands ───
+
+{
+  console.log('  area bands');
+
+  assert.strictEqual(getAreaBand(50), 'xs');
+  assert.strictEqual(getAreaBand(60), 'xs');
+  assert.strictEqual(getAreaBand(61), 's');
+  assert.strictEqual(getAreaBand(90), 's');
+  assert.strictEqual(getAreaBand(91), 'm');
+  assert.strictEqual(getAreaBand(120), 'm');
+  assert.strictEqual(getAreaBand(121), 'l');
+  assert.strictEqual(getAreaBand(180), 'l');
+  assert.strictEqual(getAreaBand(181), 'xl');
+  assert.strictEqual(getAreaBand(500), 'xl');
+  assert.strictEqual(getAreaBand(0), '');
+  assert.strictEqual(getAreaBand(null), '');
+  console.log('    band labels correct');
+
+  // Items of different sizes should NOT be in same most-specific group
+  const mixedItems = [];
+  for (let i = 0; i < 5; i++) {
+    mixedItems.push({
+      price: 100000, property: { type: 'apartamento', tipology: 'T2', area_useful: 70 },
+      location: { district: 'Porto', municipality: 'Porto', parish: 'Cedofeita' },
+      url: `https://example.com/small-${i}`,
+    });
+    mixedItems.push({
+      price: 300000, property: { type: 'apartamento', tipology: 'T2', area_useful: 200 },
+      location: { district: 'Porto', municipality: 'Porto', parish: 'Cedofeita' },
+      url: `https://example.com/large-${i}`,
+    });
+  }
+
+  const mixedMap = buildBenchmarks(mixedItems);
+  const smallLookup = lookupBenchmark(
+    { district: 'Porto', municipality: 'Porto', parish: 'Cedofeita' },
+    'apartamento', 'T2', mixedMap, { area: 70 },
+  );
+  const largeLookup = lookupBenchmark(
+    { district: 'Porto', municipality: 'Porto', parish: 'Cedofeita' },
+    'apartamento', 'T2', mixedMap, { area: 200 },
+  );
+  assert.ok(smallLookup !== null, 'small area should find benchmark');
+  assert.ok(largeLookup !== null, 'large area should find benchmark');
+  // Medians should be different since price/m2 differs
+  if (smallLookup.level.includes('area') && largeLookup.level.includes('area')) {
+    assert.notStrictEqual(smallLookup.stats.median, largeLookup.stats.median,
+      'different area bands should have different medians');
+    console.log(`    small area median: ${smallLookup.stats.median}, large area median: ${largeLookup.stats.median}`);
+  }
+
+  console.log('    all passed\n');
+}
+
+// ─── Weighted median ───
+
+{
+  console.log('  weighted median');
+
+  // Equal timestamps → same as simple median
+  const now = Date.now();
+  const entries = [
+    { value: 100, scraped_at: new Date(now).toISOString() },
+    { value: 200, scraped_at: new Date(now).toISOString() },
+    { value: 300, scraped_at: new Date(now).toISOString() },
+  ];
+  const wm = weightedMedian(entries, now);
+  assert.strictEqual(wm, 200, 'equal timestamps should give simple median');
+  console.log('    equal timestamps');
+
+  // No timestamps → simple median fallback
+  const plain = [{ value: 10 }, { value: 20 }, { value: 30 }];
+  assert.strictEqual(weightedMedian(plain), 20, 'no timestamps should fallback to simple median');
+  console.log('    no timestamps fallback');
+
+  // Single entry
+  assert.strictEqual(weightedMedian([{ value: 42 }]), 42);
+  console.log('    single entry');
+
+  // Recent entries should pull median toward them
+  const day = 24 * 60 * 60 * 1000;
+  const mixedAge = [
+    { value: 1000, scraped_at: new Date(now - 150 * day).toISOString() }, // old, low weight
+    { value: 1000, scraped_at: new Date(now - 150 * day).toISOString() },
+    { value: 2000, scraped_at: new Date(now).toISOString() },             // recent, high weight
+    { value: 2000, scraped_at: new Date(now).toISOString() },
+    { value: 2000, scraped_at: new Date(now).toISOString() },
+  ];
+  mixedAge.sort((a, b) => a.value - b.value);
+  const wmMixed = weightedMedian(mixedAge, now);
+  assert.ok(wmMixed >= 1500, `weighted median should favor recent entries, got ${wmMixed}`);
+  console.log(`    temporal weighting: ${wmMixed} (favors recent 2000 over old 1000)`);
+
+  console.log('    all passed\n');
+}
+
+// ─── Benchmark cache ───
+
+{
+  console.log('  benchmark cache');
+
+  const {
+    emptyState,
+    upsertToBenchmarkCache,
+    pruneStaleBenchmarks,
+    getCacheListingsAsArray,
+  } = require('../src/services/valuation/benchmarkCache');
+
+  const state = emptyState();
+  assert.deepStrictEqual(state.listings, {});
+  console.log('    empty state');
+
+  // Upsert items
+  const items = [
+    {
+      url: 'https://www.olx.pt/d/anuncio/apt-1',
+      price: 150000,
+      source: 'olx',
+      property: { type: 'apartamento', tipology: 'T2', area_useful: 80 },
+      location: { district: 'Porto', municipality: 'Porto', parish: 'Cedofeita' },
+    },
+    {
+      url: 'https://www.olx.pt/d/anuncio/apt-2',
+      price: 200000,
+      source: 'olx',
+      property: { type: 'apartamento', tipology: 'T3', area_useful: 100 },
+      location: { district: 'Porto', municipality: 'Porto', parish: 'Cedofeita' },
+    },
+    // No area → should be skipped
+    {
+      url: 'https://www.olx.pt/d/anuncio/no-area',
+      price: 100000,
+      source: 'olx',
+      property: { type: 'apartamento' },
+      location: { district: 'Porto' },
+    },
+  ];
+
+  const result = upsertToBenchmarkCache(state, items, '2026-04-09T00:00:00Z');
+  assert.strictEqual(result.newCount, 2, 'should insert 2 (skip item without area)');
+  assert.strictEqual(Object.keys(state.listings).length, 2);
+  console.log('    upsert items');
+
+  // Update existing
+  const updated = upsertToBenchmarkCache(state, [{
+    url: 'https://www.olx.pt/d/anuncio/apt-1',
+    price: 160000,
+    source: 'olx',
+    property: { type: 'apartamento', tipology: 'T2', area_useful: 80 },
+    location: { district: 'Porto', municipality: 'Porto', parish: 'Cedofeita' },
+  }], '2026-04-10T00:00:00Z');
+  assert.strictEqual(updated.updatedCount, 1);
+  assert.strictEqual(updated.newCount, 0);
+  console.log('    update existing');
+
+  // getCacheListingsAsArray
+  const arr = getCacheListingsAsArray(state);
+  assert.strictEqual(arr.length, 2);
+  assert.ok(arr[0].property.type, 'should have nested property');
+  assert.ok(arr[0].location.district, 'should have nested location');
+  console.log('    cache to array');
+
+  // Pruning
+  const staleState = emptyState();
+  staleState.listings['old-url'] = { scraped_at: '2025-01-01T00:00:00Z', price_per_sqm: 1000 };
+  staleState.listings['recent-url'] = { scraped_at: '2026-04-01T00:00:00Z', price_per_sqm: 1500 };
+  const pruned = pruneStaleBenchmarks(staleState, 180);
+  assert.strictEqual(pruned, 1, 'should prune 1 old entry');
+  assert.ok(staleState.listings['recent-url'], 'recent should remain');
+  assert.ok(!staleState.listings['old-url'], 'old should be removed');
+  console.log('    pruning');
+
+  console.log('    all passed\n');
+}
+
+// ─── Benchmark details in report ───
+
+{
+  console.log('  benchmark details in report');
+
+  const listings = [];
+  for (let i = 0; i < 10; i++) {
+    listings.push({
+      price: 100000 + i * 10000,
+      property: { type: 'apartamento', tipology: 'T2', area_useful: 80, condition: 'usado' },
+      location: { district: 'Porto', municipality: 'Porto', parish: 'Cedofeita' },
+      url: `https://example.com/details-${i}`,
+    });
+  }
+
+  const benchmarkMap = buildBenchmarks(listings);
+  const testItem = {
+    price: 120000,
+    property: { type: 'apartamento', tipology: 'T2', area_useful: 80, condition: 'usado' },
+    location: { district: 'Porto', municipality: 'Porto', parish: 'Cedofeita' },
+    url: 'https://example.com/details-test',
+  };
+
+  const report = generateReport(testItem, benchmarkMap);
+  assert.ok(report.evaluable);
+  assert.ok(report.benchmark_details, 'should have benchmark_details');
+  assert.ok(typeof report.benchmark_details.comparables_count === 'number');
+  assert.ok(report.benchmark_details.price_sqm_range);
+  assert.ok(typeof report.benchmark_details.price_sqm_range.min === 'number');
+  assert.ok(typeof report.benchmark_details.price_sqm_range.max === 'number');
+  assert.ok(typeof report.benchmark_details.fallback_used === 'boolean');
+  console.log(`    benchmark_details: ${report.benchmark_details.comparables_count} comparables, range ${report.benchmark_details.price_sqm_range.min}-${report.benchmark_details.price_sqm_range.max}`);
+
+  console.log('    all passed\n');
+}
+
+// ─── Bathroom extraction ───
+
+{
+  console.log('  bathroom extraction');
+
+  const { extractBathroomsFromFeatures } = require('../src/integration/dataCleaner');
+
+  assert.strictEqual(extractBathroomsFromFeatures(['Casas de Banho: 2', 'Garagem']), 2);
+  assert.strictEqual(extractBathroomsFromFeatures(['Casa de Banho: 1']), 1);
+  assert.strictEqual(extractBathroomsFromFeatures(['WC: 3']), 3);
+  assert.strictEqual(extractBathroomsFromFeatures(['2 casas de banho']), 2);
+  assert.strictEqual(extractBathroomsFromFeatures(['Garagem', 'Piscina']), null);
+  assert.strictEqual(extractBathroomsFromFeatures([]), null);
+  assert.strictEqual(extractBathroomsFromFeatures(null), null);
+  console.log('    pattern matching');
+
+  // Full cleanItem integration
+  const { cleanItem } = require('../src/integration/dataCleaner');
+  const item = cleanItem({
+    url: 'https://www.olx.pt/d/anuncio/test',
+    price: '150000',
+    property: { type: 'apartamento', area_useful: '80' },
+    location: { district: 'Porto' },
+    features: ['Casas de Banho: 2', 'Certificado Energetico: B'],
+  }, 'olx');
+  assert.strictEqual(item.property.bathrooms, 2);
+  console.log('    integrated in cleanItem');
+
+  console.log('    all passed\n');
+}
+
+// ─── analyzeBatchWithCache ───
+
+{
+  console.log('  analyzeBatchWithCache');
+
+  const { analyzeBatchWithCache } = require('../src/services/valuation');
+
+  // Mock cache dependencies
+  let savedState = null;
+  const mockDeps = {
+    withBenchmarkCacheLock: async (configId, fn) => {
+      const state = { version: 1, updated_at: null, listings: {} };
+      const result = await fn(state);
+      savedState = state;
+      return result;
+    },
+  };
+
+  const items = [];
+  for (let i = 0; i < 8; i++) {
+    items.push({
+      price: 100000 + i * 10000,
+      property: { type: 'apartamento', tipology: 'T2', area_useful: 80, condition: 'usado' },
+      location: { district: 'Porto', municipality: 'Porto', parish: 'Cedofeita' },
+      url: `https://www.olx.pt/d/anuncio/cache-${i}`,
+      source: 'olx',
+    });
+  }
+
+  analyzeBatchWithCache('test-config', items, mockDeps).then(result => {
+    assert.ok(result.reports.length === 8, 'should have 8 reports');
+    assert.ok(result.stats.evaluated > 0, 'should have evaluated items');
+    assert.ok(result.stats.cache, 'should have cache meta');
+    assert.ok(result.stats.cache.cacheSize > 0, 'cache should have entries');
+    assert.ok(savedState !== null, 'state should have been saved');
+    console.log(`    cache: ${result.stats.cache.cacheSize} entries, ${result.stats.cache.newInCache} new`);
+    console.log('    all passed\n');
+  }).catch(err => {
+    console.error(`  FAIL  analyzeBatchWithCache: ${err.message}`);
+    process.exitCode = 1;
+  });
 }
 
 console.log('  All valuation tests passed\n');

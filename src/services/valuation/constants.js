@@ -2,8 +2,11 @@
  * Valuation system constants and configuration.
  */
 
-const MIN_COMPARABLES = 5;
+const MIN_COMPARABLES = 3;
+const MIN_RELIABLE = 8;
 const LEAVE_ONE_OUT_THRESHOLD = 20;
+const BENCHMARK_CACHE_MAX_AGE_DAYS = 180;
+const TEMPORAL_DECAY_DAYS = 90;
 
 // Sanity filters
 const MIN_AREA_SQM = 10;
@@ -59,11 +62,21 @@ const FSBO_BONUS_THRESHOLD = 70;
 const DAYS_ONLINE_BONUS = 0.5;
 const DAYS_ONLINE_BONUS_THRESHOLD = 60;
 
+// Area bands for benchmark grouping (m²)
+const AREA_BANDS = [
+  { label: 'xs', max: 60 },
+  { label: 's', max: 90 },
+  { label: 'm', max: 120 },
+  { label: 'l', max: 180 },
+  { label: 'xl', max: Infinity },
+];
+
 // Confidence levels based on number of comparables
 const CONFIDENCE_LEVELS = {
-  high: 15,
-  medium: 10,
-  low: 5,
+  high: 20,
+  medium: 12,
+  low: 8,
+  marginal: 3,
 };
 
 // Opportunity labels
@@ -77,7 +90,11 @@ const OPPORTUNITY_LABELS = {
 
 module.exports = {
   MIN_COMPARABLES,
+  MIN_RELIABLE,
   LEAVE_ONE_OUT_THRESHOLD,
+  BENCHMARK_CACHE_MAX_AGE_DAYS,
+  TEMPORAL_DECAY_DAYS,
+  AREA_BANDS,
   MIN_AREA_SQM,
   MAX_AREA_SQM,
   MIN_PRICE_EUR,

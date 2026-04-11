@@ -324,6 +324,37 @@ function coerceStringsToNative(item) {
   return result;
 }
 
+// ─── Bathroom extraction ───
+
+/**
+ * Extract number of bathrooms from features array.
+ * Handles Portuguese patterns: "Casas de Banho: 2", "2 casas de banho", "WC: 1".
+ *
+ * @param {string[]} features
+ * @returns {number|null}
+ */
+function extractBathroomsFromFeatures(features) {
+  if (!Array.isArray(features)) return null;
+  const text = features.join(' ');
+
+  const patterns = [
+    /Casas?\s+de\s+Banho[:\s]+(\d+)/i,
+    /(\d+)\s+casas?\s+de\s+banho/i,
+    /wc[:\s]+(\d+)/i,
+    /(\d+)\s+wc/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      const num = parseInt(match[1], 10);
+      if (num >= 1 && num <= 10) return num;
+    }
+  }
+
+  return null;
+}
+
 // ─── Main entry point ───
 
 /**
@@ -398,6 +429,14 @@ function cleanItem(item, source) {
 
   result = coerceStringsToNative(result);
 
+  // Extract bathrooms from features[] when not already present
+  if (result.property && !result.property.bathrooms) {
+    const extracted = extractBathroomsFromFeatures(result.features);
+    if (extracted !== null) {
+      result.property = { ...result.property, bathrooms: extracted };
+    }
+  }
+
   return result;
 }
 
@@ -417,4 +456,5 @@ module.exports = {
   cleanImovirtualFloor,
   coerceStringsToNative,
   extractAreaFromDescription,
+  extractBathroomsFromFeatures,
 };
