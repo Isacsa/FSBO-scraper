@@ -94,6 +94,59 @@ runTest('accepts listings with explicit fsbo evidence', () => {
   assert.equal(gate.metrics.uncertain_blocked, 0);
 });
 
+runTest('does not reject cheap rural sale with vende-se in title', () => {
+  const result = classifyPrecisionDecision(
+    {
+      url: 'https://www.olx.pt/d/anuncio/vende-se-terreno-rural-ID555.html',
+      title: 'Vende-se terreno rural em Ponte de Lima',
+      price: 1500,
+      property: { type: 'terreno' },
+      advertiser: { name: 'Manuel Costa', is_agency: false },
+      fsbo_score: 65,
+      fsbo_decision: 'fsbo',
+    },
+    'olx'
+  );
+
+  assert.notEqual(result.decision, 'reject',
+    'Should not reject a sale listing just because price < 2000');
+});
+
+runTest('does not reject cheap listing from real estate URL section', () => {
+  const result = classifyPrecisionDecision(
+    {
+      url: 'https://www.olx.pt/imoveis/terrenos-quintas/d/anuncio/terreno-ID666.html',
+      title: 'Terreno para construcao',
+      price: 1800,
+      property: { type: 'terreno' },
+      advertiser: { name: 'Ana Silva', is_agency: false },
+      fsbo_score: 65,
+      fsbo_decision: 'fsbo',
+    },
+    'olx'
+  );
+
+  assert.notEqual(result.decision, 'reject',
+    'Should not reject a listing from /imoveis/ section as rent');
+});
+
+runTest('still rejects cheap non-real-estate item without sale hint', () => {
+  const result = classifyPrecisionDecision(
+    {
+      url: 'https://www.olx.pt/d/anuncio/movel-usado-ID777.html',
+      title: 'Movel usado em bom estado',
+      price: 500,
+      advertiser: { name: 'Pedro', is_agency: false },
+      fsbo_score: 65,
+      fsbo_decision: 'fsbo',
+    },
+    'olx'
+  );
+
+  assert.equal(result.decision, 'reject');
+  assert.ok(result.reasons.includes('rent_only_listing'));
+});
+
 runTest('qa corpus stays partitioned into accept / uncertain / reject buckets', () => {
   corpus.accepted.forEach((entry) => {
     const result = classifyPrecisionDecision(entry.item, entry.source);

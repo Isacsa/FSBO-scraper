@@ -36,8 +36,14 @@ const RENT_ONLY_PATTERNS = [
 const SALE_HINT_PATTERNS = [
   /\bvenda\b/i,
   /\bvender\b/i,
+  /\bvende-se\b/i,
+  /\bvendo\b/i,
+  /\b[àa] venda\b/i,
   /\bcomprar\b/i,
   /\bcompra\b/i,
+  /\/imoveis\//i,
+  /\/comprar/i,
+  /\/imobiliario\//i,
 ];
 
 const PLACEHOLDER_ADVERTISERS = new Set([
