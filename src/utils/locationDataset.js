@@ -320,6 +320,17 @@ const locationDataset = {
     lat: 41.7050,
     lng: -8.7700
   },
+  // Viana do Castelo — freguesias adicionais
+  'amonde': { municipality: 'Viana do Castelo', district: 'Viana do Castelo', lat: 41.7200, lng: -8.7200 },
+  'deocriste': { municipality: 'Viana do Castelo', district: 'Viana do Castelo', lat: 41.7000, lng: -8.8100 },
+  'freixieiro de soutelo': { municipality: 'Viana do Castelo', district: 'Viana do Castelo', lat: 41.7400, lng: -8.7400 },
+  'mazarefes e vila fria': { municipality: 'Viana do Castelo', district: 'Viana do Castelo', lat: 41.6700, lng: -8.7900 },
+  'meixedo (viana do castelo)': { municipality: 'Viana do Castelo', district: 'Viana do Castelo', lat: 41.7300, lng: -8.8100 },
+  'sao romao do neiva': { municipality: 'Viana do Castelo', district: 'Viana do Castelo', lat: 41.6700, lng: -8.7500 },
+  'são romão do neiva': { municipality: 'Viana do Castelo', district: 'Viana do Castelo', lat: 41.6700, lng: -8.7500 },
+  'serreleis': { municipality: 'Viana do Castelo', district: 'Viana do Castelo', lat: 41.7100, lng: -8.8200 },
+  'vila franca': { municipality: 'Viana do Castelo', district: 'Viana do Castelo', lat: 41.7200, lng: -8.7900 },
+  'vilar de murteda': { municipality: 'Viana do Castelo', district: 'Viana do Castelo', lat: 41.7300, lng: -8.7500 },
 
   // Ponte de Lima
   'ponte de lima': {
@@ -598,6 +609,21 @@ const locationDataset = {
     lat: 41.7900,
     lng: -8.5400
   },
+  // Ponte de Lima — freguesias adicionais
+  'arca e louturao': { municipality: 'Ponte de Lima', district: 'Viana do Castelo', lat: 41.7800, lng: -8.5800 },
+  'arca e louturão': { municipality: 'Ponte de Lima', district: 'Viana do Castelo', lat: 41.7800, lng: -8.5800 },
+  'bertiandos e sa': { municipality: 'Ponte de Lima', district: 'Viana do Castelo', lat: 41.7500, lng: -8.6100 },
+  'bertiandos e sá': { municipality: 'Ponte de Lima', district: 'Viana do Castelo', lat: 41.7500, lng: -8.6100 },
+  'cabacos e fojo lobal': { municipality: 'Ponte de Lima', district: 'Viana do Castelo', lat: 41.8000, lng: -8.5300 },
+  'cabaços e fojo lobal': { municipality: 'Ponte de Lima', district: 'Viana do Castelo', lat: 41.8000, lng: -8.5300 },
+  'cabracao e moreira do lima': { municipality: 'Ponte de Lima', district: 'Viana do Castelo', lat: 41.7900, lng: -8.5600 },
+  'cabração e moreira do lima': { municipality: 'Ponte de Lima', district: 'Viana do Castelo', lat: 41.7900, lng: -8.5600 },
+  'fornelos e queijada': { municipality: 'Ponte de Lima', district: 'Viana do Castelo', lat: 41.7700, lng: -8.5500 },
+  'gandra (ponte de lima)': { municipality: 'Ponte de Lima', district: 'Viana do Castelo', lat: 41.7600, lng: -8.5800 },
+  'navio e vitorino dos piaes': { municipality: 'Ponte de Lima', district: 'Viana do Castelo', lat: 41.7300, lng: -8.6000 },
+  'navió e vitorino dos piães': { municipality: 'Ponte de Lima', district: 'Viana do Castelo', lat: 41.7300, lng: -8.6000 },
+  'sao pedro de arcos': { municipality: 'Ponte de Lima', district: 'Viana do Castelo', lat: 41.7600, lng: -8.6200 },
+  'são pedro de arcos': { municipality: 'Ponte de Lima', district: 'Viana do Castelo', lat: 41.7600, lng: -8.6200 },
 
   // Arcos de Valdevez
   'arcos de valdevez': {
@@ -792,6 +818,23 @@ const locationDataset = {
     lat: 41.8500,
     lng: -8.4200
   },
+  // Arcos de Valdevez — freguesias adicionais
+  'aboim, gavieira e alvora': { municipality: 'Arcos de Valdevez', district: 'Viana do Castelo', lat: 41.9100, lng: -8.2800 },
+  'aguia': { municipality: 'Arcos de Valdevez', district: 'Viana do Castelo', lat: 41.8700, lng: -8.4500 },
+  'aguiã': { municipality: 'Arcos de Valdevez', district: 'Viana do Castelo', lat: 41.8700, lng: -8.4500 },
+  'arcos de valdevez (salvador)': { municipality: 'Arcos de Valdevez', district: 'Viana do Castelo', lat: 41.8480, lng: -8.4160 },
+  'azere': { municipality: 'Arcos de Valdevez', district: 'Viana do Castelo', lat: 41.8200, lng: -8.3800 },
+  'ázere': { municipality: 'Arcos de Valdevez', district: 'Viana do Castelo', lat: 41.8200, lng: -8.3800 },
+  'cabana maior': { municipality: 'Arcos de Valdevez', district: 'Viana do Castelo', lat: 41.9000, lng: -8.3200 },
+  'couto': { municipality: 'Arcos de Valdevez', district: 'Viana do Castelo', lat: 41.8300, lng: -8.4300 },
+  'extremo': { municipality: 'Arcos de Valdevez', district: 'Viana do Castelo', lat: 41.8600, lng: -8.3900 },
+  'oliveira (arcos de valdevez)': { municipality: 'Arcos de Valdevez', district: 'Viana do Castelo', lat: 41.8400, lng: -8.4400 },
+  'padreiro (salvador)': { municipality: 'Arcos de Valdevez', district: 'Viana do Castelo', lat: 41.8800, lng: -8.4300 },
+  'padreiro (santa cristina)': { municipality: 'Arcos de Valdevez', district: 'Viana do Castelo', lat: 41.8900, lng: -8.4200 },
+  'tavora (santa maria)': { municipality: 'Arcos de Valdevez', district: 'Viana do Castelo', lat: 41.8300, lng: -8.3600 },
+  'távora (santa maria)': { municipality: 'Arcos de Valdevez', district: 'Viana do Castelo', lat: 41.8300, lng: -8.3600 },
+  'tavora (sao vicente)': { municipality: 'Arcos de Valdevez', district: 'Viana do Castelo', lat: 41.8400, lng: -8.3500 },
+  'távora (são vicente)': { municipality: 'Arcos de Valdevez', district: 'Viana do Castelo', lat: 41.8400, lng: -8.3500 },
 
   // Ponte da Barca
   'ponte da barca': {
@@ -896,6 +939,17 @@ const locationDataset = {
     lat: 41.8100,
     lng: -8.4500
   },
+  // Ponte da Barca — freguesias adicionais
+  'azias': { municipality: 'Ponte da Barca', district: 'Viana do Castelo', lat: 41.8300, lng: -8.4800 },
+  'boivao (ponte da barca)': { municipality: 'Ponte da Barca', district: 'Viana do Castelo', lat: 41.8200, lng: -8.4600 },
+  'boivão (ponte da barca)': { municipality: 'Ponte da Barca', district: 'Viana do Castelo', lat: 41.8200, lng: -8.4600 },
+  'nogueira (ponte da barca)': { municipality: 'Ponte da Barca', district: 'Viana do Castelo', lat: 41.8000, lng: -8.4700 },
+  'oleiros (ponte da barca)': { municipality: 'Ponte da Barca', district: 'Viana do Castelo', lat: 41.8100, lng: -8.4300 },
+  'paco vedro de magalhaes': { municipality: 'Ponte da Barca', district: 'Viana do Castelo', lat: 41.7900, lng: -8.4400 },
+  'paço vedro de magalhães': { municipality: 'Ponte da Barca', district: 'Viana do Castelo', lat: 41.7900, lng: -8.4400 },
+  'vade': { municipality: 'Ponte da Barca', district: 'Viana do Castelo', lat: 41.7800, lng: -8.4200 },
+  'vila cha': { municipality: 'Ponte da Barca', district: 'Viana do Castelo', lat: 41.8000, lng: -8.4900 },
+  'vila chã': { municipality: 'Ponte da Barca', district: 'Viana do Castelo', lat: 41.8000, lng: -8.4900 },
 
   // Caminha
   'caminha': {
@@ -1000,6 +1054,13 @@ const locationDataset = {
     lat: 41.8700,
     lng: -8.7800
   },
+  // Caminha — freguesias adicionais
+  'ancora': { municipality: 'Caminha', district: 'Viana do Castelo', lat: 41.8100, lng: -8.8600 },
+  'âncora': { municipality: 'Caminha', district: 'Viana do Castelo', lat: 41.8100, lng: -8.8600 },
+  'riba de ancora': { municipality: 'Caminha', district: 'Viana do Castelo', lat: 41.8200, lng: -8.8500 },
+  'riba de âncora': { municipality: 'Caminha', district: 'Viana do Castelo', lat: 41.8200, lng: -8.8500 },
+  'cristelo': { municipality: 'Caminha', district: 'Viana do Castelo', lat: 41.8500, lng: -8.8300 },
+  'dem': { municipality: 'Caminha', district: 'Viana do Castelo', lat: 41.8600, lng: -8.8100 },
 
   // Valença
   'valença': {
@@ -1076,6 +1137,13 @@ const locationDataset = {
     lat: 42.0400,
     lng: -8.5900
   },
+  // Valença — freguesias adicionais
+  'boivao (valenca)': { municipality: 'Valença', district: 'Viana do Castelo', lat: 42.0100, lng: -8.6200 },
+  'boivão (valença)': { municipality: 'Valença', district: 'Viana do Castelo', lat: 42.0100, lng: -8.6200 },
+  'gandra (valenca)': { municipality: 'Valença', district: 'Viana do Castelo', lat: 42.0000, lng: -8.6500 },
+  'gandra (valença)': { municipality: 'Valença', district: 'Viana do Castelo', lat: 42.0000, lng: -8.6500 },
+  'silva (valenca)': { municipality: 'Valença', district: 'Viana do Castelo', lat: 42.0100, lng: -8.6100 },
+  'silva (valença)': { municipality: 'Valença', district: 'Viana do Castelo', lat: 42.0100, lng: -8.6100 },
 
   // Monção
   'monção': {
@@ -1198,6 +1266,22 @@ const locationDataset = {
     lat: 42.0700,
     lng: -8.4500
   },
+  // Monção — freguesias adicionais
+  'abedim': { municipality: 'Monção', district: 'Viana do Castelo', lat: 42.0500, lng: -8.3700 },
+  'anhoes': { municipality: 'Monção', district: 'Viana do Castelo', lat: 42.0300, lng: -8.3900 },
+  'anhões': { municipality: 'Monção', district: 'Viana do Castelo', lat: 42.0300, lng: -8.3900 },
+  'barrocas e taias': { municipality: 'Monção', district: 'Viana do Castelo', lat: 42.0400, lng: -8.4200 },
+  'barroças e taias': { municipality: 'Monção', district: 'Viana do Castelo', lat: 42.0400, lng: -8.4200 },
+  'bela': { municipality: 'Monção', district: 'Viana do Castelo', lat: 42.0600, lng: -8.4800 },
+  'lara': { municipality: 'Monção', district: 'Viana do Castelo', lat: 42.0300, lng: -8.4600 },
+  'lordemao': { municipality: 'Monção', district: 'Viana do Castelo', lat: 42.0500, lng: -8.4300 },
+  'lordemão': { municipality: 'Monção', district: 'Viana do Castelo', lat: 42.0500, lng: -8.4300 },
+  'messegaes': { municipality: 'Monção', district: 'Viana do Castelo', lat: 42.0200, lng: -8.4100 },
+  'messegães': { municipality: 'Monção', district: 'Viana do Castelo', lat: 42.0200, lng: -8.4100 },
+  'parada (moncao)': { municipality: 'Monção', district: 'Viana do Castelo', lat: 42.0600, lng: -8.4600 },
+  'parada (monção)': { municipality: 'Monção', district: 'Viana do Castelo', lat: 42.0600, lng: -8.4600 },
+  'portela (moncao)': { municipality: 'Monção', district: 'Viana do Castelo', lat: 42.0400, lng: -8.3800 },
+  'portela (monção)': { municipality: 'Monção', district: 'Viana do Castelo', lat: 42.0400, lng: -8.3800 },
 
   // Melgaço
   'melgaço': {
@@ -1290,6 +1374,13 @@ const locationDataset = {
     lat: 42.1100,
     lng: -8.2500
   },
+  // Melgaço — freguesias adicionais
+  'alvaredo': { municipality: 'Melgaço', district: 'Viana do Castelo', lat: 42.0900, lng: -8.2900 },
+  'cubalhao': { municipality: 'Melgaço', district: 'Viana do Castelo', lat: 42.0800, lng: -8.2600 },
+  'cubalhão': { municipality: 'Melgaço', district: 'Viana do Castelo', lat: 42.0800, lng: -8.2600 },
+  'fiaes': { municipality: 'Melgaço', district: 'Viana do Castelo', lat: 42.0700, lng: -8.2400 },
+  'fiães': { municipality: 'Melgaço', district: 'Viana do Castelo', lat: 42.0700, lng: -8.2400 },
+  'piso': { municipality: 'Melgaço', district: 'Viana do Castelo', lat: 42.0800, lng: -8.2300 },
 
   // Paredes de Coura
   'paredes de coura': {
@@ -1400,6 +1491,12 @@ const locationDataset = {
     lat: 41.9400,
     lng: -8.5800
   },
+  // Paredes de Coura — freguesias adicionais
+  'bico (paredes de coura)': { municipality: 'Paredes de Coura', district: 'Viana do Castelo', lat: 41.9200, lng: -8.5600 },
+  'insalde': { municipality: 'Paredes de Coura', district: 'Viana do Castelo', lat: 41.9100, lng: -8.5500 },
+  'parada (paredes de coura)': { municipality: 'Paredes de Coura', district: 'Viana do Castelo', lat: 41.9300, lng: -8.5400 },
+  'vascoes': { municipality: 'Paredes de Coura', district: 'Viana do Castelo', lat: 41.9000, lng: -8.5700 },
+  'vascões': { municipality: 'Paredes de Coura', district: 'Viana do Castelo', lat: 41.9000, lng: -8.5700 },
 
   // Vila Nova de Cerveira
   'vila nova de cerveira': {
@@ -1462,6 +1559,12 @@ const locationDataset = {
     lat: 41.9700,
     lng: -8.7200
   },
+  // Vila Nova de Cerveira — freguesias adicionais
+  'mentrestido': { municipality: 'Vila Nova de Cerveira', district: 'Viana do Castelo', lat: 41.9400, lng: -8.7300 },
+  'nogueira (cerveira)': { municipality: 'Vila Nova de Cerveira', district: 'Viana do Castelo', lat: 41.9600, lng: -8.7400 },
+  'vila mea': { municipality: 'Vila Nova de Cerveira', district: 'Viana do Castelo', lat: 41.9300, lng: -8.7100 },
+  'vila meã': { municipality: 'Vila Nova de Cerveira', district: 'Viana do Castelo', lat: 41.9300, lng: -8.7100 },
+  'sopo': { municipality: 'Vila Nova de Cerveira', district: 'Viana do Castelo', lat: 41.9500, lng: -8.7600 },
 
   // Braga (concelhos limítrofes do Alto Minho)
   'barcelos': {
@@ -1584,6 +1687,175 @@ const locationDataset = {
     lat: 41.6500,
     lng: -8.3600
   },
+
+  // Barcelos — freguesias principais
+  'barcelinhos': { municipality: 'Barcelos', district: 'Braga', lat: 41.5300, lng: -8.6200 },
+  'vila boa': { municipality: 'Barcelos', district: 'Braga', lat: 41.5500, lng: -8.5800 },
+  'abade de neiva': { municipality: 'Barcelos', district: 'Braga', lat: 41.5600, lng: -8.5900 },
+  'alheira': { municipality: 'Barcelos', district: 'Braga', lat: 41.5700, lng: -8.5700 },
+  'alvelos': { municipality: 'Barcelos', district: 'Braga', lat: 41.5200, lng: -8.5600 },
+  'areias': { municipality: 'Barcelos', district: 'Braga', lat: 41.5100, lng: -8.6000 },
+  'barqueiros': { municipality: 'Barcelos', district: 'Braga', lat: 41.4900, lng: -8.6300 },
+  'campo': { municipality: 'Barcelos', district: 'Braga', lat: 41.5400, lng: -8.5500 },
+  'carreira': { municipality: 'Barcelos', district: 'Braga', lat: 41.5000, lng: -8.5700 },
+  'chorente': { municipality: 'Barcelos', district: 'Braga', lat: 41.5600, lng: -8.5500 },
+  'courel': { municipality: 'Barcelos', district: 'Braga', lat: 41.5300, lng: -8.5400 },
+  'durraes': { municipality: 'Barcelos', district: 'Braga', lat: 41.5500, lng: -8.5300 },
+  'durrães': { municipality: 'Barcelos', district: 'Braga', lat: 41.5500, lng: -8.5300 },
+  'encourados': { municipality: 'Barcelos', district: 'Braga', lat: 41.5800, lng: -8.5600 },
+  'feitos': { municipality: 'Barcelos', district: 'Braga', lat: 41.5400, lng: -8.5700 },
+  'gamil': { municipality: 'Barcelos', district: 'Braga', lat: 41.5000, lng: -8.5500 },
+  'gilmonde': { municipality: 'Barcelos', district: 'Braga', lat: 41.5100, lng: -8.5800 },
+  'lama': { municipality: 'Barcelos', district: 'Braga', lat: 41.5600, lng: -8.5200 },
+  'lijo': { municipality: 'Barcelos', district: 'Braga', lat: 41.5300, lng: -8.6500 },
+  'lijó': { municipality: 'Barcelos', district: 'Braga', lat: 41.5300, lng: -8.6500 },
+  'manhente': { municipality: 'Barcelos', district: 'Braga', lat: 41.5800, lng: -8.5400 },
+  'mariz': { municipality: 'Barcelos', district: 'Braga', lat: 41.5700, lng: -8.5100 },
+  'midoes': { municipality: 'Barcelos', district: 'Braga', lat: 41.5100, lng: -8.5400 },
+  'midões': { municipality: 'Barcelos', district: 'Braga', lat: 41.5100, lng: -8.5400 },
+  'negreiros': { municipality: 'Barcelos', district: 'Braga', lat: 41.5400, lng: -8.5200 },
+  'oliveira': { municipality: 'Barcelos', district: 'Braga', lat: 41.5200, lng: -8.5300 },
+  'palme': { municipality: 'Barcelos', district: 'Braga', lat: 41.4900, lng: -8.5900 },
+  'perelhal': { municipality: 'Barcelos', district: 'Braga', lat: 41.5000, lng: -8.6500 },
+  'pousa': { municipality: 'Barcelos', district: 'Braga', lat: 41.5200, lng: -8.5700 },
+  'quintiaes': { municipality: 'Barcelos', district: 'Braga', lat: 41.5600, lng: -8.6000 },
+  'quintiães': { municipality: 'Barcelos', district: 'Braga', lat: 41.5600, lng: -8.6000 },
+  'remelhe': { municipality: 'Barcelos', district: 'Braga', lat: 41.5100, lng: -8.6200 },
+  'rio covo': { municipality: 'Barcelos', district: 'Braga', lat: 41.4900, lng: -8.5600 },
+  'roriz': { municipality: 'Barcelos', district: 'Braga', lat: 41.5300, lng: -8.5100 },
+  'silva': { municipality: 'Barcelos', district: 'Braga', lat: 41.5500, lng: -8.5500 },
+  'tamel': { municipality: 'Barcelos', district: 'Braga', lat: 41.5500, lng: -8.6300 },
+  'ucha': { municipality: 'Barcelos', district: 'Braga', lat: 41.5400, lng: -8.6400 },
+  'viatodos': { municipality: 'Barcelos', district: 'Braga', lat: 41.5700, lng: -8.5800 },
+  'vila cova': { municipality: 'Barcelos', district: 'Braga', lat: 41.5000, lng: -8.5200 },
+  'vila frescainha': { municipality: 'Barcelos', district: 'Braga', lat: 41.5400, lng: -8.6100 },
+  'vila seca': { municipality: 'Barcelos', district: 'Braga', lat: 41.5600, lng: -8.6200 },
+  'aldreu': { municipality: 'Barcelos', district: 'Braga', lat: 41.4900, lng: -8.7300 },
+  'aguiar': { municipality: 'Barcelos', district: 'Braga', lat: 41.5800, lng: -8.5900 },
+
+  // Vila Verde — freguesias principais
+  'barbudo': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6300, lng: -8.4100 },
+  'cervaes': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6600, lng: -8.4200 },
+  'cervães': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6600, lng: -8.4200 },
+  'coucieiro': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6400, lng: -8.4500 },
+  'dossaos': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6800, lng: -8.4400 },
+  'dossãos': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6800, lng: -8.4400 },
+  'esqueiros': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6500, lng: -8.4600 },
+  'geme': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6200, lng: -8.4200 },
+  'godinhacos': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6700, lng: -8.4100 },
+  'godinhaços': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6700, lng: -8.4100 },
+  'lanhas': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6300, lng: -8.4600 },
+  'laje': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6600, lng: -8.4500 },
+  'loureira': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6800, lng: -8.4200 },
+  'marrancos': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6400, lng: -8.4300 },
+  'moure': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6200, lng: -8.4500 },
+  'oleiros': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6700, lng: -8.4600 },
+  'parada de gatim': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6500, lng: -8.4200 },
+  'pico': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6300, lng: -8.4400 },
+  'prado': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6100, lng: -8.4200 },
+  'ribeira do neiva': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6900, lng: -8.4300 },
+  'sabariz': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6500, lng: -8.4100 },
+  'sande': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6400, lng: -8.4000 },
+  'soutelo': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6600, lng: -8.3900 },
+  'turiz': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6700, lng: -8.4500 },
+  'valdreu': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6200, lng: -8.4300 },
+  'vila de prado': { municipality: 'Vila Verde', district: 'Braga', lat: 41.6100, lng: -8.4500 },
+
+  // Amares — freguesias adicionais
+  'rendufe': { municipality: 'Amares', district: 'Braga', lat: 41.6200, lng: -8.3400 },
+  'bouro santa maria': { municipality: 'Amares', district: 'Braga', lat: 41.6700, lng: -8.3200 },
+  'bouro santa marta': { municipality: 'Amares', district: 'Braga', lat: 41.6800, lng: -8.3100 },
+  'fiscal': { municipality: 'Amares', district: 'Braga', lat: 41.6400, lng: -8.3300 },
+  'goaes': { municipality: 'Amares', district: 'Braga', lat: 41.6100, lng: -8.3600 },
+  'goães': { municipality: 'Amares', district: 'Braga', lat: 41.6100, lng: -8.3600 },
+  'barreiros': { municipality: 'Amares', district: 'Braga', lat: 41.6300, lng: -8.3800 },
+  'bico': { municipality: 'Amares', district: 'Braga', lat: 41.6500, lng: -8.3400 },
+  'paranhos': { municipality: 'Amares', district: 'Braga', lat: 41.6200, lng: -8.3200 },
+
+  // Terras de Bouro — freguesias adicionais
+  'rio caldo': { municipality: 'Terras de Bouro', district: 'Braga', lat: 41.7300, lng: -8.2200 },
+  'chamoim': { municipality: 'Terras de Bouro', district: 'Braga', lat: 41.7100, lng: -8.2800 },
+  'souto': { municipality: 'Terras de Bouro', district: 'Braga', lat: 41.7000, lng: -8.3100 },
+  'ciboes': { municipality: 'Terras de Bouro', district: 'Braga', lat: 41.7000, lng: -8.2500 },
+  'cibões': { municipality: 'Terras de Bouro', district: 'Braga', lat: 41.7000, lng: -8.2500 },
+  'balanca': { municipality: 'Terras de Bouro', district: 'Braga', lat: 41.7200, lng: -8.2700 },
+  'balança': { municipality: 'Terras de Bouro', district: 'Braga', lat: 41.7200, lng: -8.2700 },
+  'moimenta': { municipality: 'Terras de Bouro', district: 'Braga', lat: 41.7100, lng: -8.3300 },
+  'gondoriz': { municipality: 'Terras de Bouro', district: 'Braga', lat: 41.7200, lng: -8.3000 },
+
+  // Esposende — freguesias adicionais
+  'palmeira de faro': { municipality: 'Esposende', district: 'Braga', lat: 41.5300, lng: -8.7300 },
+  'gemeses': { municipality: 'Esposende', district: 'Braga', lat: 41.5400, lng: -8.7200 },
+  'fonte boa': { municipality: 'Esposende', district: 'Braga', lat: 41.5500, lng: -8.7100 },
+
+  // Póvoa de Lanhoso — novo município limítrofe
+  'povoa de lanhoso': { municipality: 'Póvoa de Lanhoso', district: 'Braga', lat: 41.5769, lng: -8.2714 },
+  'póvoa de lanhoso': { municipality: 'Póvoa de Lanhoso', district: 'Braga', lat: 41.5769, lng: -8.2714 },
+  'calvos': { municipality: 'Póvoa de Lanhoso', district: 'Braga', lat: 41.5900, lng: -8.2500 },
+  'covelas': { municipality: 'Póvoa de Lanhoso', district: 'Braga', lat: 41.5600, lng: -8.2600 },
+  'esperanca': { municipality: 'Póvoa de Lanhoso', district: 'Braga', lat: 41.5800, lng: -8.2900 },
+  'esperança': { municipality: 'Póvoa de Lanhoso', district: 'Braga', lat: 41.5800, lng: -8.2900 },
+  'fonte arcada': { municipality: 'Póvoa de Lanhoso', district: 'Braga', lat: 41.5700, lng: -8.3000 },
+  'garfe': { municipality: 'Póvoa de Lanhoso', district: 'Braga', lat: 41.5500, lng: -8.2800 },
+  'geraz do minho': { municipality: 'Póvoa de Lanhoso', district: 'Braga', lat: 41.5900, lng: -8.3100 },
+  'lanhoso': { municipality: 'Póvoa de Lanhoso', district: 'Braga', lat: 41.5800, lng: -8.2700 },
+  'monsul': { municipality: 'Póvoa de Lanhoso', district: 'Braga', lat: 41.5600, lng: -8.2900 },
+  'rendufinho': { municipality: 'Póvoa de Lanhoso', district: 'Braga', lat: 41.6000, lng: -8.2800 },
+  'sao joao de rei': { municipality: 'Póvoa de Lanhoso', district: 'Braga', lat: 41.5500, lng: -8.2500 },
+  'são joão de rei': { municipality: 'Póvoa de Lanhoso', district: 'Braga', lat: 41.5500, lng: -8.2500 },
+  'sobradelo da goma': { municipality: 'Póvoa de Lanhoso', district: 'Braga', lat: 41.5700, lng: -8.2500 },
+  'taide': { municipality: 'Póvoa de Lanhoso', district: 'Braga', lat: 41.5800, lng: -8.2600 },
+  'taíde': { municipality: 'Póvoa de Lanhoso', district: 'Braga', lat: 41.5800, lng: -8.2600 },
+  'verim': { municipality: 'Póvoa de Lanhoso', district: 'Braga', lat: 41.5600, lng: -8.3100 },
+
+  // Vieira do Minho — novo município limítrofe (Gerês)
+  'vieira do minho': { municipality: 'Vieira do Minho', district: 'Braga', lat: 41.6336, lng: -8.1378 },
+  'anisso': { municipality: 'Vieira do Minho', district: 'Braga', lat: 41.6500, lng: -8.1200 },
+  'anissó': { municipality: 'Vieira do Minho', district: 'Braga', lat: 41.6500, lng: -8.1200 },
+  'canicada': { municipality: 'Vieira do Minho', district: 'Braga', lat: 41.6800, lng: -8.1500 },
+  'caniçada': { municipality: 'Vieira do Minho', district: 'Braga', lat: 41.6800, lng: -8.1500 },
+  'cantelaes': { municipality: 'Vieira do Minho', district: 'Braga', lat: 41.6400, lng: -8.1600 },
+  'cantelães': { municipality: 'Vieira do Minho', district: 'Braga', lat: 41.6400, lng: -8.1600 },
+  'eira vedra': { municipality: 'Vieira do Minho', district: 'Braga', lat: 41.6200, lng: -8.1300 },
+  'guilhofrei': { municipality: 'Vieira do Minho', district: 'Braga', lat: 41.6400, lng: -8.1100 },
+  'louredo': { municipality: 'Vieira do Minho', district: 'Braga', lat: 41.6300, lng: -8.1500 },
+  'mosteiro': { municipality: 'Vieira do Minho', district: 'Braga', lat: 41.6100, lng: -8.1200 },
+  'pinheiro': { municipality: 'Vieira do Minho', district: 'Braga', lat: 41.6200, lng: -8.1700 },
+  'rossas': { municipality: 'Vieira do Minho', district: 'Braga', lat: 41.6500, lng: -8.1700 },
+  'ruivaes': { municipality: 'Vieira do Minho', district: 'Braga', lat: 41.6700, lng: -8.1300 },
+  'ruivães': { municipality: 'Vieira do Minho', district: 'Braga', lat: 41.6700, lng: -8.1300 },
+  'salamonde': { municipality: 'Vieira do Minho', district: 'Braga', lat: 41.6900, lng: -8.1000 },
+  'tabuacas': { municipality: 'Vieira do Minho', district: 'Braga', lat: 41.6100, lng: -8.1600 },
+  'tabuaças': { municipality: 'Vieira do Minho', district: 'Braga', lat: 41.6100, lng: -8.1600 },
+  'ventosa': { municipality: 'Vieira do Minho', district: 'Braga', lat: 41.6600, lng: -8.1400 },
+
+  // Montalegre — novo município limítrofe (Vila Real / Peneda-Gerês)
+  'montalegre': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.8228, lng: -7.7897 },
+  'cabril': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.7700, lng: -7.9200 },
+  'cambeses do rio': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.8000, lng: -7.7500 },
+  'cervos': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.8500, lng: -7.7600 },
+  'cha': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.8100, lng: -7.8200 },
+  'chã': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.8100, lng: -7.8200 },
+  'covelaes': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.8800, lng: -7.8300 },
+  'covelães': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.8800, lng: -7.8300 },
+  'donoes': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.8400, lng: -7.8000 },
+  'donões': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.8400, lng: -7.8000 },
+  'fiaes do rio': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.8600, lng: -7.7800 },
+  'fiães do rio': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.8600, lng: -7.7800 },
+  'gralhas': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.8300, lng: -7.7200 },
+  'meixedo': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.8100, lng: -7.7600 },
+  'negroes': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.8200, lng: -7.7300 },
+  'negrões': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.8200, lng: -7.7300 },
+  'padornelos': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.8700, lng: -7.8600 },
+  'pitoes das junias': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.8900, lng: -7.9400 },
+  'pitões das júnias': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.8900, lng: -7.9400 },
+  'tourem': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.9100, lng: -7.9600 },
+  'tourém': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.9100, lng: -7.9600 },
+  'venda nova': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.7800, lng: -7.9800 },
+  'vila da ponte': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.8300, lng: -7.7700 },
+  'salto': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.7900, lng: -7.8800 },
+  'santo andre': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.8400, lng: -7.7400 },
+  'santo andré': { municipality: 'Montalegre', district: 'Vila Real', lat: 41.8400, lng: -7.7400 },
 
   // Lisboa
   'lisboa': {
