@@ -554,7 +554,7 @@ function analyzeFsboSignals(data, platform = 'olx') {
       fsboScore -= 35;
     } else {
       positiveEvidence.push('advertiser_marked_private');
-      fsboScore += 10;
+      fsboScore += 15;
     }
   }
 
