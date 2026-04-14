@@ -521,6 +521,72 @@ function parseLogLines(stderrCapture) {
     assert.equal(payload.meta.incremental.updated, 1);
     assert.equal(payload.meta.incremental.unchanged, 3);
   });
+  // --- Multi-URL Support Tests ---
+
+  await runTest('multi-URL array sources are scraped and merged', async () => {
+    const stdout = createWritableCapture();
+    const stderr = createWritableCapture();
+    const exits = [];
+    const scrapedUrls = [];
+
+    const result = await main({
+      argv: ['--dry-run', '--run-now'],
+      env: {
+        APP_API_URL: 'https://app.example.com',
+        SCRAPER_API_KEY: 'secret-key',
+        SCRAPER_TENANT_ID: 'tenant-123',
+      },
+      now: Date.now(),
+      stdout,
+      stderr,
+      exit: (code) => exits.push(code),
+      deps: {
+        randomUUID: () => 'multi-url-run',
+        async pullConfigs() {
+          return [{
+            id: 'cfg-multi',
+            area_label: 'Alto Minho',
+            sources: {
+              olx: [
+                'https://www.olx.pt/imoveis/moradias/viana-do-castelo/',
+                'https://www.olx.pt/imoveis/apartamentos/viana-do-castelo/',
+              ],
+            },
+            options: { maxAds: 5 },
+          }];
+        },
+        async runPlatform({ url }) {
+          scrapedUrls.push(url);
+          return { results: [{ url: `https://www.olx.pt/d/anuncio/item-from-${scrapedUrls.length}-ID${scrapedUrls.length}.html`, title: `Item ${scrapedUrls.length}` }] };
+        },
+        dedupeListInMemory: (items) => ({ unique: items, duplicates: [] }),
+        calculateFsboScores: (ads) => ads.map(a => ({ ...a, fsbo_score: 80, fsbo_decision: 'fsbo', signals: { fsbo_score: 80, fsbo_decision: 'fsbo' } })),
+        applyPrecisionGate: (items) => ({
+          accepted: items,
+          rejected: [],
+          uncertain: [],
+          evaluations: items.map(i => ({ cleaned: i, decision: 'accept', reasons: [] })),
+          metrics: { total: items.length, accepted_for_push: items.length, rejected_precision: 0, uncertain_blocked: 0 },
+        }),
+        analyzeBatchWithCache: async () => ({ reports: [], stats: { evaluated: 0, skipped: 0, opportunities: 0 } }),
+        withPriceStateLock: async () => ({ newCount: 0, priceChanged: 0 }),
+        pruneStale: () => {},
+        upsertListings: () => ({ newCount: 0, priceChanged: 0 }),
+        computeDropMetrics: () => null,
+        applyIncremental: async (items) => ({ items: items.map(i => ({ ...i, _status: 'NEW' })), meta: { new: items.length, updated: 0, unchanged: 0 } }),
+        buildIngestPayload: ({ rawItems }) => ({ items: rawItems, meta: {} }),
+        async pushBatch() { return {}; },
+      },
+    });
+
+    // Both URLs should have been scraped
+    assert.equal(scrapedUrls.length, 2, `Expected 2 URLs scraped, got ${scrapedUrls.length}`);
+    assert.ok(scrapedUrls[0].includes('moradias'));
+    assert.ok(scrapedUrls[1].includes('apartamentos'));
+    // Items from both URLs should be merged
+    assert.equal(result.summary.totalItems, 2);
+  });
+
   // --- Extraction Quality Tests ---
 
   await runTest('assessExtractionQuality returns OK for good data', async () => {

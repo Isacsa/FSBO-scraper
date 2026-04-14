@@ -11,6 +11,7 @@
  *   node scripts/broad-scraper.js --run-now               # force immediate run
  *   node scripts/broad-scraper.js --config-id=<uuid>      # single config
  *   node scripts/broad-scraper.js --dry-run               # no push to API
+ *   node scripts/broad-scraper.js --force-all             # run all configs (bypass broadScraper.enabled)
  *   node scripts/broad-scraper.js --legacy                # disable incremental tracking
  *
  * Environment:
@@ -51,6 +52,7 @@ function parseCliArgs(argv = process.argv.slice(2)) {
   return {
     runNow: argv.includes('--run-now'),
     dryRun: argv.includes('--dry-run'),
+    forceAll: argv.includes('--force-all'),
     incremental: !argv.includes('--legacy'),
     configId: (() => {
       const flag = argv.find(a => a.startsWith('--config-id='));
@@ -135,8 +137,8 @@ async function scrapeSource(platform, url, options, deps) {
       platform,
       url,
       options: {
-        maxPages: options?.maxPages ?? 5,
-        maxAds: options?.maxAds ?? 50,
+        maxPages: options?.maxPages ?? 10,
+        maxAds: options?.maxAds ?? 100,
         maxWait: options?.maxWait ?? null,
         headless: true,
         filterAgencies: false,
@@ -180,20 +182,38 @@ async function processConfig(config, connOpts, runtime = {}) {
     errors: [],
   };
 
-  for (const [platform, url] of Object.entries(sources)) {
-    if (!url || typeof url !== 'string') continue;
+  for (const [platform, urlOrUrls] of Object.entries(sources)) {
+    // Support both single URL string and array of URLs
+    const urls = Array.isArray(urlOrUrls) ? urlOrUrls.filter(u => u && typeof u === 'string') : (urlOrUrls && typeof urlOrUrls === 'string' ? [urlOrUrls] : []);
+    if (urls.length === 0) continue;
     if (!SOURCES.includes(platform)) continue;
 
     runResults.sourcesAttempted++;
     const runId = deps.randomUUID();
 
-    log('info', `[broad] Scraping ${platform}`, { configId, platform, url });
+    // Scrape all URLs for this platform and merge items
+    const allItems = [];
+    let totalDurationMs = 0;
+    let anyError = false;
 
-    const { items, durationMs, error } = await scrapeSource(platform, url, options, deps);
+    for (const url of urls) {
+      log('info', `[broad] Scraping ${platform}`, { configId, platform, url });
+      const { items: urlItems, durationMs: urlDurationMs, error } = await scrapeSource(platform, url, options, deps);
+      totalDurationMs += urlDurationMs;
 
-    if (error) {
-      log('error', `[broad] Scraper failed for ${platform}`, { configId, platform, error });
-      runResults.errors.push({ source: platform, error_type: 'scrape_failed', message: error });
+      if (error) {
+        log('error', `[broad] Scraper failed for ${platform} URL: ${url}`, { configId, platform, error });
+        anyError = true;
+      } else {
+        allItems.push(...urlItems);
+      }
+    }
+
+    const items = allItems;
+    const durationMs = totalDurationMs;
+
+    if (items.length === 0 && anyError) {
+      runResults.errors.push({ source: platform, error_type: 'scrape_failed', message: 'All URLs failed' });
       continue;
     }
 
@@ -368,11 +388,15 @@ async function main(runtime = {}) {
     }
   }
 
-  // Filter configs with broadScraper enabled
-  configs = configs.filter(c => c.options?.broadScraper?.enabled === true);
+  // Filter configs with broadScraper enabled (unless --force-all)
+  if (!flags.forceAll) {
+    configs = configs.filter(c => c.options?.broadScraper?.enabled === true);
+  } else {
+    log('info', `[broad] --force-all: running all ${configs.length} configs`);
+  }
 
   if (configs.length === 0) {
-    log('info', '[broad] No configs with broadScraper enabled. Exiting.');
+    log('info', '[broad] No configs with broadScraper enabled. Use --force-all to run all configs.');
     return { exitCode: 0, summary: { configsProcessed: 0, totalItems: 0 } };
   }
 

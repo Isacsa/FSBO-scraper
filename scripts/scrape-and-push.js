@@ -292,19 +292,38 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {})
     return { payload, result };
   }
 
-  for (const [platform, url] of Object.entries(sources)) {
-    if (!url || typeof url !== 'string') continue;
+  for (const [platform, urlOrUrls] of Object.entries(sources)) {
+    // Support both single URL string and array of URLs
+    const urls = Array.isArray(urlOrUrls) ? urlOrUrls.filter(u => u && typeof u === 'string') : (urlOrUrls && typeof urlOrUrls === 'string' ? [urlOrUrls] : []);
+    if (urls.length === 0) continue;
 
     runResults.sourcesAttempted++;
     const runId = deps.randomUUID();
 
-    log('info', `Scraping ${platform}`, { configId, platform, url });
+    // Scrape all URLs for this platform and merge items
+    const allItems = [];
+    let totalDurationMs = 0;
+    const scrapeErrors = [];
 
-    const { items, durationMs, error } = await scrapeSource(platform, url, options, deps);
+    for (const url of urls) {
+      log('info', `Scraping ${platform}`, { configId, platform, url });
+      const { items, durationMs, error } = await scrapeSource(platform, url, options, deps);
+      totalDurationMs += durationMs;
 
-    if (error) {
-      log('error', `Scraper failed for ${platform}`, { configId, platform, error });
-      const runError = { source: platform, error_type: 'scrape_failed', message: error };
+      if (error) {
+        log('error', `Scraper failed for ${platform} URL: ${url}`, { configId, platform, error });
+        scrapeErrors.push({ url, error });
+      } else {
+        allItems.push(...items);
+      }
+    }
+
+    const items = allItems;
+    const durationMs = totalDurationMs;
+
+    // If ALL URLs failed, report failure
+    if (scrapeErrors.length === urls.length) {
+      const runError = { source: platform, error_type: 'scrape_failed', message: scrapeErrors.map(e => e.error).join('; ') };
       runResults.errors.push(runError);
       try {
         await publishRun({
