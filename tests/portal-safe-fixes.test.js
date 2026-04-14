@@ -252,6 +252,58 @@ async function runTest(name, fn) {
     const result = cleanItem(item, 'olx');
     assert.equal(result.property.area_useful, 80);
   });
+
+  // --- Municipality-to-District Map Tests ---
+  const { getDistrictForMunicipality } = require('../src/utils/municipalityDistrictMap');
+
+  await runTest('getDistrictForMunicipality: Ponte de Lima -> Viana do Castelo', async () => {
+    assert.equal(getDistrictForMunicipality('Ponte de Lima'), 'Viana do Castelo');
+  });
+
+  await runTest('getDistrictForMunicipality: case insensitive', async () => {
+    assert.equal(getDistrictForMunicipality('ponte de lima'), 'Viana do Castelo');
+  });
+
+  await runTest('getDistrictForMunicipality: accented input', async () => {
+    assert.equal(getDistrictForMunicipality('Monção'), 'Viana do Castelo');
+    assert.equal(getDistrictForMunicipality('moncao'), 'Viana do Castelo');
+  });
+
+  await runTest('getDistrictForMunicipality: returns null for unknown', async () => {
+    assert.equal(getDistrictForMunicipality('Atlantis'), null);
+    assert.equal(getDistrictForMunicipality(null), null);
+    assert.equal(getDistrictForMunicipality(''), null);
+  });
+
+  // --- District Inference in dataCleaner ---
+
+  await runTest('cleanItem infers district from municipality when missing (CustoJusto)', async () => {
+    const item = {
+      title: 'Moradia T3',
+      price: '270000',
+      location: { district: '', municipality: 'Ponte de Lima', parish: 'Anais' },
+      property: { type: 'moradia', tipology: 'T3' },
+      advertiser: {},
+      photos: [],
+      features: [],
+    };
+    const result = cleanItem(item, 'custojusto');
+    assert.equal(result.location.district, 'Viana do Castelo');
+  });
+
+  await runTest('cleanItem does NOT override existing district', async () => {
+    const item = {
+      title: 'Moradia T3',
+      price: '270000',
+      location: { district: 'Viana do Castelo', municipality: 'Ponte de Lima' },
+      property: { type: 'moradia', tipology: 'T3' },
+      advertiser: {},
+      photos: [],
+      features: [],
+    };
+    const result = cleanItem(item, 'custojusto');
+    assert.equal(result.location.district, 'Viana do Castelo');
+  });
 })().catch((error) => {
   process.exitCode = 1;
   throw error;

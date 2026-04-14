@@ -4,6 +4,8 @@
  * altering any portal scraper logic.
  */
 
+const { getDistrictForMunicipality } = require('../utils/municipalityDistrictMap');
+
 // ─── Generic helpers ───
 
 function trimCollapse(str) {
@@ -423,6 +425,18 @@ function cleanItem(item, source) {
         result.property = { ...result.property };
         result.property.area_useful = String(extracted.area);
         result.property._area_source = extracted.source;
+      }
+    }
+  }
+
+  // Infer district from municipality when missing (any portal)
+  if (result.location) {
+    const dist = result.location.district;
+    const mun = result.location.municipality;
+    if ((!dist || (typeof dist === 'string' && dist.trim() === '')) && mun && typeof mun === 'string' && mun.trim()) {
+      const inferred = getDistrictForMunicipality(mun);
+      if (inferred) {
+        result.location = { ...result.location, district: inferred };
       }
     }
   }

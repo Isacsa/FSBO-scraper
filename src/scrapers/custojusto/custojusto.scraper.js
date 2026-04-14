@@ -26,7 +26,8 @@ async function scrapeCustoJusto(listingUrl, options = {}) {
     onlyNew = false,
     maxPages = null,
     maxAds = null,
-    headless = true  // Default true, mas será validado por shouldRunHeadless() em createBrowser
+    headless = true,  // Default true, mas será validado por shouldRunHeadless() em createBrowser
+    filterPrivateOnly = true
   } = options;
   
   console.log(`[${PLATFORM.toUpperCase()}] 🚀 Iniciando scrape...`);
@@ -39,7 +40,8 @@ async function scrapeCustoJusto(listingUrl, options = {}) {
     const listingUrls = await extractAllListingUrls(listingUrl, {
       maxPages,
       timeout: 40000,
-      headless
+      headless,
+      filterPrivateOnly
     });
     
     if (listingUrls.length === 0) {

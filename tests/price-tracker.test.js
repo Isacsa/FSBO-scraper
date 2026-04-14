@@ -942,9 +942,11 @@ test('Idealista: filterPrivateOnly=true preserves filterAgencies', () => {
   assert.strictEqual(opts.filterAgencies, true);
 });
 
-test('CustoJusto: does not include filterPrivateOnly (handled via URL)', () => {
+test('CustoJusto: passes filterPrivateOnly option', () => {
   const opts = buildScraperOptions('custojusto', { filterPrivateOnly: false });
-  assert.strictEqual(opts.filterPrivateOnly, undefined);
+  assert.strictEqual(opts.filterPrivateOnly, false);
+  const opts2 = buildScraperOptions('custojusto', { filterPrivateOnly: true });
+  assert.strictEqual(opts2.filterPrivateOnly, true);
 });
 
 // ── Finish ───────────────────────────────────────────────────────────────────

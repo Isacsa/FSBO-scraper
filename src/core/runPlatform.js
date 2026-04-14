@@ -115,7 +115,7 @@ function buildScraperOptions(platform, opts) {
     return out;
   }
   if (platform === 'custojusto') {
-    return { onlyNew, maxPages, maxAds, headless };
+    return { onlyNew, maxPages, maxAds, headless, filterPrivateOnly };
   }
   if (platform === 'casasapo') {
     return { onlyNew, maxPages, maxAds, headless, filterPrivateOnly };

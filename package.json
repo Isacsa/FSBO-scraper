@@ -12,6 +12,7 @@
     "scrape-push": "node scripts/scrape-and-push.js",
     "price-tracker": "node scripts/price-tracker.js",
     "broad-scraper": "node scripts/broad-scraper.js",
+    "buyer-search": "node scripts/buyer-search-scraper.js",
     "lobstr:squids": "node scripts/list-lobstr-squids.js",
     "lobstr:test": "node scripts/test-lobstr-connection.js",
     "analyze": "node scripts/analyze-valuations.js",

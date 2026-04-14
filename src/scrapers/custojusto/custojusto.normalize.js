@@ -3,6 +3,7 @@
  */
 
 const { normalizeLocation } = require('../../utils/locationNormalizer');
+const { getDistrictForMunicipality } = require('../../utils/municipalityDistrictMap');
 const { parseAdData } = require('./custojusto.parse');
 const { parseCustoJustoDate } = require('./dateParser');
 const { analyzeFsboSignals } = require('../../services/fsboSignals');
@@ -33,7 +34,7 @@ async function normalizeAd(parsed, options = {}) {
   
   if (parsed.location_text) {
     try {
-      location = await normalizeLocation(parsed.location_text);
+      location = await normalizeLocation(parsed.location_text, 'custojusto');
     } catch (e) {
       console.warn('[CustoJusto Normalize] ⚠️  Erro ao normalizar localização:', e.message);
     }
@@ -112,18 +113,11 @@ async function normalizeAd(parsed, options = {}) {
       location.parish = freguesia;
     }
     
-    // Tentar determinar distrito baseado no concelho
+    // Determinar distrito baseado no concelho
     if (concelho) {
-      // Mapeamento básico de concelhos para distritos (pode ser expandido)
-      const distritoMap = {
-        'Óbidos': 'Leiria',
-        'Lisboa': 'Lisboa',
-        'Porto': 'Porto',
-        'Coimbra': 'Coimbra',
-        'Braga': 'Braga'
-      };
-      if (distritoMap[concelho]) {
-        location.district = distritoMap[concelho];
+      const distrito = getDistrictForMunicipality(concelho);
+      if (distrito) {
+        location.district = distrito;
       }
     }
   }

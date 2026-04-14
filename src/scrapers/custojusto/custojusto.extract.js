@@ -217,22 +217,25 @@ async function extractAllListingUrls(listingUrl, options = {}) {
   const {
     maxPages = null,
     timeout = 40000,
-    headless = true  // Default true, mas será validado por shouldRunHeadless() em createBrowser
+    headless = true,  // Default true, mas será validado por shouldRunHeadless() em createBrowser
+    filterPrivateOnly = true
   } = options;
-  
+
   console.log('[CustoJusto Extract] 📋 Iniciando extração de listagem...');
   console.log(`[CustoJusto Extract] URL: ${listingUrl}`);
-  
+
   // Validar e garantir que f=p está presente (filtro de particulares)
-  const urlObj = new URL(listingUrl);
-  const searchParams = new URLSearchParams(urlObj.search);
-  if (!searchParams.has('f') || searchParams.get('f') !== 'p') {
-    console.warn('[CustoJusto Extract] ⚠️  AVISO: Parâmetro f=p não encontrado na URL!');
-    console.warn('[CustoJusto Extract] ⚠️  Adicionando f=p para filtrar apenas particulares...');
-    searchParams.set('f', 'p');
-    urlObj.search = searchParams.toString();
-    listingUrl = urlObj.toString();
-    console.log(`[CustoJusto Extract] ✅ URL corrigida: ${listingUrl}`);
+  if (filterPrivateOnly) {
+    const urlObj = new URL(listingUrl);
+    const searchParams = new URLSearchParams(urlObj.search);
+    if (!searchParams.has('f') || searchParams.get('f') !== 'p') {
+      console.warn('[CustoJusto Extract] ⚠️  AVISO: Parâmetro f=p não encontrado na URL!');
+      console.warn('[CustoJusto Extract] ⚠️  Adicionando f=p para filtrar apenas particulares...');
+      searchParams.set('f', 'p');
+      urlObj.search = searchParams.toString();
+      listingUrl = urlObj.toString();
+      console.log(`[CustoJusto Extract] ✅ URL corrigida: ${listingUrl}`);
+    }
   }
   
   const browser = await createBrowser({ 
@@ -743,8 +746,8 @@ async function extractAdDetails(adUrl, options = {}) {
           area_terreno: specsText.match(/área\s+do\s+terreno[:\s]*(\d+)/i)?.[1],
           classe_energetica: specsText.match(/classe\s+energética[:\s]*([A-G])/i)?.[1],
           tipo: specsText.match(/tipo[:\s]*([^\n]{1,20})/i)?.[1]?.trim(),
-          concelho: specsText.match(/concelho[:\s]*([^\n]{1,50})/i)?.[1]?.trim(),
-          freguesia: specsText.match(/freguesia[:\s]*([^\n]{1,50})/i)?.[1]?.trim(),
+          concelho: specsText.match(/concelho[:\s]*(.+?)(?=Freguesia|Id do|Classe|Tipo|Ano|Piso|Condi[çc]|$)/i)?.[1]?.trim(),
+          freguesia: specsText.match(/freguesia[:\s]*(.+?)(?=Id do|Classe|Tipo|Ano|Piso|Condi[çc]|Concelho|$)/i)?.[1]?.trim(),
           id_anuncio: specsText.match(/id\s+do\s+anúncio[:\s]*(\d+)/i)?.[1],
           ano: specsText.match(/ano[:\s]*(\d{4})/i)?.[1],
           piso: specsText.match(/piso[:\s]*([^\n]{1,30})/i)?.[1]?.trim(),
@@ -756,10 +759,14 @@ async function extractAdDetails(adUrl, options = {}) {
           specs.tipologia = specs.tipologia.match(/[Tt]\d+/i)?.[0]?.toUpperCase() || null;
         }
         if (specs.concelho) {
-          specs.concelho = specs.concelho.split(/[^\w\s-]/)[0].trim();
+          specs.concelho = specs.concelho
+            .replace(/Freguesia.*$/i, '')
+            .split(/[^\w\s\u00C0-\u024F-]/)[0].trim();
         }
         if (specs.freguesia) {
-          specs.freguesia = specs.freguesia.split(/[^\w\s-]/)[0].trim();
+          specs.freguesia = specs.freguesia
+            .replace(/Id do.*$/i, '')
+            .split(/[^\w\s\u00C0-\u024F-]/)[0].trim();
         }
         
         // Limpar e adicionar apenas especificações válidas
@@ -802,19 +809,23 @@ async function extractAdDetails(adUrl, options = {}) {
         }
         
         // Concelho (limitar tamanho)
-        const concelhoMatch = bodyText.match(/concelho[:\s]*([^\n]{1,50})/i);
+        const concelhoMatch = bodyText.match(/concelho[:\s]*(.+?)(?=Freguesia|Id do|Classe|Tipo|Ano|Piso|Condi[çc]|$)/i);
         if (concelhoMatch) {
-          const concelho = concelhoMatch[1].split(/[^\w\s-]/)[0].trim();
+          const concelho = concelhoMatch[1]
+            .replace(/Freguesia.*$/i, '')
+            .split(/[^\w\s\u00C0-\u024F-]/)[0].trim();
           if (concelho.length > 0 && concelho.length < 50) {
             data.specifications.concelho = concelho;
             data.features.push(`Concelho: ${concelho}`);
           }
         }
-        
+
         // Freguesia (limitar tamanho)
-        const freguesiaMatch = bodyText.match(/freguesia[:\s]*([^\n]{1,50})/i);
+        const freguesiaMatch = bodyText.match(/freguesia[:\s]*(.+?)(?=Id do|Classe|Tipo|Ano|Piso|Condi[çc]|Concelho|$)/i);
         if (freguesiaMatch) {
-          const freguesia = freguesiaMatch[1].split(/[^\w\s-]/)[0].trim();
+          const freguesia = freguesiaMatch[1]
+            .replace(/Id do.*$/i, '')
+            .split(/[^\w\s\u00C0-\u024F-]/)[0].trim();
           if (freguesia.length > 0 && freguesia.length < 50) {
             data.specifications.freguesia = freguesia;
             data.features.push(`Freguesia: ${freguesia}`);

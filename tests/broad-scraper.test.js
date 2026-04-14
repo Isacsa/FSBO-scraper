@@ -48,14 +48,16 @@ test('parseCliArgs: defaults', () => {
   const args = parseCliArgs([]);
   assert.strictEqual(args.runNow, false);
   assert.strictEqual(args.dryRun, false);
+  assert.strictEqual(args.forceAll, false);
   assert.strictEqual(args.incremental, true);
   assert.strictEqual(args.configId, null);
 });
 
 test('parseCliArgs: all flags', () => {
-  const args = parseCliArgs(['--run-now', '--dry-run', '--config-id=abc-123', '--legacy']);
+  const args = parseCliArgs(['--run-now', '--dry-run', '--force-all', '--config-id=abc-123', '--legacy']);
   assert.strictEqual(args.runNow, true);
   assert.strictEqual(args.dryRun, true);
+  assert.strictEqual(args.forceAll, true);
   assert.strictEqual(args.incremental, false);
   assert.strictEqual(args.configId, 'abc-123');
 });
@@ -118,6 +120,29 @@ testAsync('no broadScraper-enabled configs — exits cleanly', async () => {
 
   assert.strictEqual(result.exitCode, 0);
   assert.strictEqual(result.summary.configsProcessed, 0);
+});
+
+testAsync('--force-all runs configs without broadScraper.enabled', async () => {
+  let pushed = false;
+  const result = await main({
+    argv: ['--run-now', '--force-all', '--dry-run', '--legacy'],
+    env: { APP_API_URL: 'http://test', SCRAPER_API_KEY: 'key', SCRAPER_TENANT_ID: 'tid' },
+    stdout: { write: () => { pushed = true; } },
+    stderr: { write: () => {} },
+    exit: () => {},
+    deps: {
+      pullConfigs: async () => [{ id: 'cfg-1', area_label: 'Test', sources: { olx: 'http://olx.pt/test' }, options: {} }],
+      runPlatform: async () => ({ results: [{ url: 'https://www.olx.pt/d/anuncio/test-IDxyz.html', title: 'Test', price: '100000' }] }),
+      cleanItem: (i) => i,
+      dedupeListInMemory: (items) => ({ unique: items, duplicates: [] }),
+      filterSalesOnly: (items) => items,
+      buildIngestPayload: (opts) => ({ items: opts.rawItems, scrape_mode: 'broad' }),
+      randomUUID: () => 'test-uuid',
+    },
+  });
+
+  assert.strictEqual(result.summary.configsProcessed, 1);
+  assert.ok(pushed, 'dry-run should output payload');
 });
 
 testAsync('scrapes with filterPrivateOnly=false and filterAgencies=false', async () => {

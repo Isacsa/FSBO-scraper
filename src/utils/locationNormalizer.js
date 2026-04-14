@@ -239,7 +239,7 @@ async function normalizeLocation(locationData, platform = 'olx', useGeocoding = 
   let processed = null;
   
   // Processar conforme plataforma
-  if (platform === 'olx') {
+  if (platform === 'olx' || platform === 'custojusto') {
     const locationText = typeof locationData === 'string' 
       ? locationData 
       : (locationData?.raw || locationData?.parts?.join(', ') || '');

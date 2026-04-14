@@ -99,6 +99,7 @@ function buildIngestPayload({
   incrementalMeta = null,
   extractionQuality = null,
   priceTrackingMeta = null,
+  buyerProfileId = null,
 }) {
   const items = rawItems.map(item => toIngestItem(item, source));
 
@@ -107,6 +108,7 @@ function buildIngestPayload({
     config_id: configId,
     source,
     area_query: areaQuery || null,
+    ...(buyerProfileId ? { buyer_profile_id: buyerProfileId } : {}),
     scraped_at: new Date().toISOString(),
     duration_ms: durationMs,
     run_status: runStatus,
