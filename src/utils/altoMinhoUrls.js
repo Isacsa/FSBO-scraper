@@ -61,7 +61,7 @@ function generateOlxUrls({ includeBorder = true } = {}) {
   for (const type of PROPERTY_TYPES) {
     const category = OLX_CATEGORY_MAP[type] || 'apartamento-casa-a-venda';
     urls.push(
-      `https://www.olx.pt/imoveis/${category}/${districtSlug}/?search%5Bprivate_business%5D=private`
+      `https://www.olx.pt/imoveis/${category}/q-${districtSlug}/?search%5Bprivate_business%5D=private`
     );
   }
 
