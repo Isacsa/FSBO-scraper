@@ -23,13 +23,22 @@ const ALTO_MINHO_CONCELHOS = [
 
 // Border concelhos where clients also buy
 const BORDER_CONCELHOS = [
+  // CIM Cávado
   'Barcelos',
   'Esposende',
   'Vila Verde',
   'Terras de Bouro',
   'Amares',
+  'Braga',
+  // CIM do Ave
   'Póvoa de Lanhoso',
   'Vieira do Minho',
+  'Guimarães',
+  'Fafe',
+  'Vila Nova de Famalicão',
+  'Vizela',
+  'Cabeceiras de Basto',
+  // Vila Real
   'Montalegre',
 ];
 
@@ -40,8 +49,14 @@ const BORDER_CONCELHO_DISTRICT = {
   'Vila Verde': 'Braga',
   'Terras de Bouro': 'Braga',
   'Amares': 'Braga',
+  'Braga': 'Braga',
   'Póvoa de Lanhoso': 'Braga',
   'Vieira do Minho': 'Braga',
+  'Guimarães': 'Braga',
+  'Fafe': 'Braga',
+  'Vila Nova de Famalicão': 'Braga',
+  'Vizela': 'Braga',
+  'Cabeceiras de Basto': 'Braga',
   'Montalegre': 'Vila Real',
 };
 
