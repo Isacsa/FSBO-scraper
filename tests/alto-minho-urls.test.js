@@ -7,6 +7,7 @@ const {
   generateCasaSapoUrls,
   ALTO_MINHO_CONCELHOS,
   BORDER_CONCELHOS,
+  BORDER_CONCELHO_DISTRICT,
 } = require('../src/utils/altoMinhoUrls');
 
 console.log('\n--- alto-minho-urls ---');
@@ -30,13 +31,16 @@ runTest('ALTO_MINHO_CONCELHOS has all 10 Viana do Castelo municipalities', () =>
   assert.ok(ALTO_MINHO_CONCELHOS.includes('Melgaço'));
 });
 
-runTest('BORDER_CONCELHOS has the 5 Braga border municipalities', () => {
-  assert.equal(BORDER_CONCELHOS.length, 5);
+runTest('BORDER_CONCELHOS has all 8 border municipalities', () => {
+  assert.equal(BORDER_CONCELHOS.length, 8);
   assert.ok(BORDER_CONCELHOS.includes('Barcelos'));
   assert.ok(BORDER_CONCELHOS.includes('Esposende'));
   assert.ok(BORDER_CONCELHOS.includes('Vila Verde'));
   assert.ok(BORDER_CONCELHOS.includes('Terras de Bouro'));
   assert.ok(BORDER_CONCELHOS.includes('Amares'));
+  assert.ok(BORDER_CONCELHOS.includes('Póvoa de Lanhoso'));
+  assert.ok(BORDER_CONCELHOS.includes('Vieira do Minho'));
+  assert.ok(BORDER_CONCELHOS.includes('Montalegre'));
 });
 
 runTest('generateOlxUrls includes private filter and district-level URLs', () => {
@@ -70,11 +74,34 @@ runTest('generateCustoJustoUrls has per-concelho URLs with f=p', () => {
   assert.ok(urls.some(u => u.includes('ponte-de-lima')));
 });
 
+runTest('generateCustoJustoUrls with border has 18 URLs (10 AM + 8 border)', () => {
+  const urls = generateCustoJustoUrls({ includeBorder: true });
+  assert.equal(urls.length, 18);
+});
+
 runTest('generateCasaSapoUrls has per-concelho URLs', () => {
   const urls = generateCasaSapoUrls({ includeBorder: false });
   assert.equal(urls.length, 10);
   assert.ok(urls.every(u => u.includes('casa.sapo.pt')));
   assert.ok(urls.some(u => u.includes('arcos-de-valdevez')));
+});
+
+runTest('Montalegre URLs use vila-real district, not braga', () => {
+  const ivUrls = generateImovirtualUrls({ includeBorder: true });
+  const cjUrls = generateCustoJustoUrls({ includeBorder: true });
+  assert.ok(ivUrls.some(u => u.includes('vila-real/montalegre')),
+    'Imovirtual should have vila-real/montalegre');
+  assert.ok(!ivUrls.some(u => u.includes('braga/montalegre')),
+    'Imovirtual should NOT have braga/montalegre');
+  assert.ok(cjUrls.some(u => u.includes('vila-real/montalegre')),
+    'CustoJusto should have vila-real/montalegre');
+});
+
+runTest('every BORDER_CONCELHOS entry has a district mapping', () => {
+  for (const c of BORDER_CONCELHOS) {
+    assert.ok(BORDER_CONCELHO_DISTRICT[c],
+      `${c} missing from BORDER_CONCELHO_DISTRICT`);
+  }
 });
 
 runTest('generateAltoMinhoSources returns all 4 platforms', () => {

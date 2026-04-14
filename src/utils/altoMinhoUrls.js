@@ -21,14 +21,29 @@ const ALTO_MINHO_CONCELHOS = [
   'Vila Nova de Cerveira',
 ];
 
-// Border concelhos (Braga district) where clients also buy
+// Border concelhos where clients also buy
 const BORDER_CONCELHOS = [
   'Barcelos',
   'Esposende',
   'Vila Verde',
   'Terras de Bouro',
   'Amares',
+  'Póvoa de Lanhoso',
+  'Vieira do Minho',
+  'Montalegre',
 ];
+
+// District for each border concelho (needed for portal URLs that include district)
+const BORDER_CONCELHO_DISTRICT = {
+  'Barcelos': 'Braga',
+  'Esposende': 'Braga',
+  'Vila Verde': 'Braga',
+  'Terras de Bouro': 'Braga',
+  'Amares': 'Braga',
+  'Póvoa de Lanhoso': 'Braga',
+  'Vieira do Minho': 'Braga',
+  'Montalegre': 'Vila Real',
+};
 
 const PROPERTY_TYPES = ['apartamento', 'moradia', 'terreno', 'quinta'];
 
@@ -94,16 +109,16 @@ function generateImovirtualUrls({ includeBorder = true } = {}) {
     );
   }
 
-  // Border concelhos
+  // Border concelhos (district varies per concelho)
   if (includeBorder) {
-    const bragaSlug = toSlug('Braga');
     for (const concelho of BORDER_CONCELHOS) {
+      const distSlug = toSlug(BORDER_CONCELHO_DISTRICT[concelho]);
       const slug = toSlug(concelho);
       urls.push(
-        `https://www.imovirtual.com/pt/resultados/comprar/moradia/${bragaSlug}/${slug}?ownerTypeSingleSelect=PRIVATE`
+        `https://www.imovirtual.com/pt/resultados/comprar/moradia/${distSlug}/${slug}?ownerTypeSingleSelect=PRIVATE`
       );
       urls.push(
-        `https://www.imovirtual.com/pt/resultados/comprar/apartamento/${bragaSlug}/${slug}?ownerTypeSingleSelect=PRIVATE`
+        `https://www.imovirtual.com/pt/resultados/comprar/apartamento/${distSlug}/${slug}?ownerTypeSingleSelect=PRIVATE`
       );
     }
   }
@@ -125,10 +140,10 @@ function generateCustoJustoUrls({ includeBorder = true } = {}) {
   }
 
   if (includeBorder) {
-    const bragaSlug = toSlug('Braga');
     for (const concelho of BORDER_CONCELHOS) {
+      const distSlug = toSlug(BORDER_CONCELHO_DISTRICT[concelho]);
       const slug = toSlug(concelho);
-      urls.push(`https://www.custojusto.pt/${bragaSlug}/${slug}/imobiliario?f=p`);
+      urls.push(`https://www.custojusto.pt/${distSlug}/${slug}/imobiliario?f=p`);
     }
   }
 
@@ -181,5 +196,6 @@ module.exports = {
   generateCasaSapoUrls,
   ALTO_MINHO_CONCELHOS,
   BORDER_CONCELHOS,
+  BORDER_CONCELHO_DISTRICT,
   PROPERTY_TYPES,
 };
