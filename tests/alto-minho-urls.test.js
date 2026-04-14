@@ -1,0 +1,110 @@
+const assert = require('assert');
+const {
+  generateAltoMinhoSources,
+  generateOlxUrls,
+  generateImovirtualUrls,
+  generateCustoJustoUrls,
+  generateCasaSapoUrls,
+  ALTO_MINHO_CONCELHOS,
+  BORDER_CONCELHOS,
+} = require('../src/utils/altoMinhoUrls');
+
+console.log('\n--- alto-minho-urls ---');
+
+function runTest(name, fn) {
+  try {
+    fn();
+    console.log(`  PASS  ${name}`);
+  } catch (error) {
+    console.error(`  FAIL  ${name}`);
+    throw error;
+  }
+}
+
+runTest('ALTO_MINHO_CONCELHOS has all 10 Viana do Castelo municipalities', () => {
+  assert.equal(ALTO_MINHO_CONCELHOS.length, 10);
+  assert.ok(ALTO_MINHO_CONCELHOS.includes('Ponte de Lima'));
+  assert.ok(ALTO_MINHO_CONCELHOS.includes('Arcos de Valdevez'));
+  assert.ok(ALTO_MINHO_CONCELHOS.includes('Viana do Castelo'));
+  assert.ok(ALTO_MINHO_CONCELHOS.includes('Caminha'));
+  assert.ok(ALTO_MINHO_CONCELHOS.includes('Melgaço'));
+});
+
+runTest('BORDER_CONCELHOS has the 5 Braga border municipalities', () => {
+  assert.equal(BORDER_CONCELHOS.length, 5);
+  assert.ok(BORDER_CONCELHOS.includes('Barcelos'));
+  assert.ok(BORDER_CONCELHOS.includes('Esposende'));
+  assert.ok(BORDER_CONCELHOS.includes('Vila Verde'));
+  assert.ok(BORDER_CONCELHOS.includes('Terras de Bouro'));
+  assert.ok(BORDER_CONCELHOS.includes('Amares'));
+});
+
+runTest('generateOlxUrls includes private filter and district-level URLs', () => {
+  const urls = generateOlxUrls({ includeBorder: false });
+  assert.ok(urls.length >= 3, `Expected >= 3 OLX URLs, got ${urls.length}`);
+  assert.ok(urls.every(u => u.includes('olx.pt')));
+  assert.ok(urls.every(u => u.includes('private_business')));
+  assert.ok(urls.some(u => u.includes('viana-do-castelo')));
+});
+
+runTest('generateOlxUrls with border adds municipality-level URLs', () => {
+  const withBorder = generateOlxUrls({ includeBorder: true });
+  const withoutBorder = generateOlxUrls({ includeBorder: false });
+  assert.ok(withBorder.length > withoutBorder.length);
+  assert.ok(withBorder.some(u => u.includes('barcelos')));
+});
+
+runTest('generateImovirtualUrls includes PRIVATE filter', () => {
+  const urls = generateImovirtualUrls({ includeBorder: false });
+  assert.ok(urls.length >= 3);
+  assert.ok(urls.every(u => u.includes('imovirtual.com')));
+  assert.ok(urls.every(u => u.includes('PRIVATE')));
+});
+
+runTest('generateCustoJustoUrls has per-concelho URLs with f=p', () => {
+  const urls = generateCustoJustoUrls({ includeBorder: false });
+  assert.equal(urls.length, 10, 'One URL per Alto Minho concelho');
+  assert.ok(urls.every(u => u.includes('custojusto.pt')));
+  assert.ok(urls.every(u => u.includes('f=p')));
+  assert.ok(urls.every(u => u.includes('imobiliario')));
+  assert.ok(urls.some(u => u.includes('ponte-de-lima')));
+});
+
+runTest('generateCasaSapoUrls has per-concelho URLs', () => {
+  const urls = generateCasaSapoUrls({ includeBorder: false });
+  assert.equal(urls.length, 10);
+  assert.ok(urls.every(u => u.includes('casa.sapo.pt')));
+  assert.ok(urls.some(u => u.includes('arcos-de-valdevez')));
+});
+
+runTest('generateAltoMinhoSources returns all 4 platforms', () => {
+  const sources = generateAltoMinhoSources();
+  assert.ok(Array.isArray(sources.olx));
+  assert.ok(Array.isArray(sources.imovirtual));
+  assert.ok(Array.isArray(sources.custojusto));
+  assert.ok(Array.isArray(sources.casasapo));
+  assert.ok(sources.olx.length > 0);
+  assert.ok(sources.imovirtual.length > 0);
+  assert.ok(sources.custojusto.length > 0);
+  assert.ok(sources.casasapo.length > 0);
+});
+
+runTest('generateAltoMinhoSources without border has fewer URLs', () => {
+  const withBorder = generateAltoMinhoSources({ includeBorder: true });
+  const withoutBorder = generateAltoMinhoSources({ includeBorder: false });
+  const totalWith = Object.values(withBorder).reduce((s, u) => s + u.length, 0);
+  const totalWithout = Object.values(withoutBorder).reduce((s, u) => s + u.length, 0);
+  assert.ok(totalWith > totalWithout,
+    `With border (${totalWith}) should have more URLs than without (${totalWithout})`);
+});
+
+runTest('no duplicate URLs within each platform', () => {
+  const sources = generateAltoMinhoSources();
+  for (const [platform, urls] of Object.entries(sources)) {
+    const unique = new Set(urls);
+    assert.equal(unique.size, urls.length,
+      `${platform} has ${urls.length - unique.size} duplicate URLs`);
+  }
+});
+
+console.log('  All alto-minho-urls tests passed\n');
