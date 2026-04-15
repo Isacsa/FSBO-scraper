@@ -29,18 +29,54 @@ function toSlug(name) {
 
 // ── Tipology helpers ──
 
-const IMOVIRTUAL_ROOMS_MAP = {
-  T0: 'STUDIO',
-  T1: 'ONE',
-  T2: 'TWO',
-  T3: 'THREE',
-  T4: 'FOUR',
-  T5: 'FIVE',
-};
-
-function tipologyToRoomCount(tip) {
+function tipologyToNumber(tip) {
   const match = (tip || '').match(/T(\d+)/i);
   return match ? parseInt(match[1], 10) : null;
+}
+
+// ── CustoJusto price scale ──
+// Index → euros. Non-linear scale used by CustoJusto's pe/ps params.
+const CUSTOJUSTO_PRICE_SCALE = [
+  0, 10000, 20000, 30000, 40000, 50000,           // 0-5: 10k steps
+  75000, 100000, 125000, 150000, 175000, 200000,   // 6-11: 25k steps
+  225000, 250000,                                   // 12-13: 25k steps
+  300000, 350000, 400000, 450000, 500000,           // 14-18: 50k steps
+  550000, 600000, 650000, 700000,                   // 19-22: 50k steps
+  800000, 900000, 1000000,                          // 23-25: 100k steps
+];
+
+/**
+ * Convert euro price to CustoJusto index.
+ * For 'max': round UP (include more expensive → be inclusive).
+ * For 'min': round DOWN (include cheaper → be inclusive).
+ */
+function custoJustoPriceToIndex(euros, direction) {
+  if (!euros || euros <= 0) return null;
+  if (euros >= 1000000) return 25;
+
+  if (direction === 'max') {
+    // Find smallest index whose value >= euros
+    for (let i = 0; i < CUSTOJUSTO_PRICE_SCALE.length; i++) {
+      if (CUSTOJUSTO_PRICE_SCALE[i] >= euros) return i;
+    }
+    return 25;
+  }
+  // direction === 'min': find largest index whose value <= euros
+  for (let i = CUSTOJUSTO_PRICE_SCALE.length - 1; i >= 0; i--) {
+    if (CUSTOJUSTO_PRICE_SCALE[i] <= euros) return i;
+  }
+  return 0;
+}
+
+/**
+ * Convert tipologies array to CustoJusto ros/roe range.
+ * CustoJusto scale: 3=T0, 4=T1, 5=T2, 6=T3, 7=T4, 8=T5, 9=T6+
+ */
+function custoJustoTipologyRange(tipologies) {
+  if (!tipologies || tipologies.length === 0) return null;
+  const nums = tipologies.map(tipologyToNumber).filter(n => n !== null);
+  if (nums.length === 0) return null;
+  return { ros: Math.min(...nums) + 3, roe: Math.max(...nums) + 3 };
 }
 
 // ── Property type helpers ──
@@ -58,7 +94,8 @@ function pluralize(type) {
 
 /**
  * Imovirtual URL builder.
- * Format: /pt/resultados/comprar/{type}/{district-slug}/{municipality-slug}?params
+ * Format: /pt/resultados/comprar/{type},{tipologies}/{district-slug}/{municipality-slug}?params
+ * Tipologies go in the path (comma-separated), not as query params.
  */
 function buildImovirtualUrls(criteria) {
   const urls = [];
@@ -67,19 +104,15 @@ function buildImovirtualUrls(criteria) {
   for (const municipality of criteria.municipalities || []) {
     const munSlug = toSlug(municipality);
     for (const type of criteria.propertyTypes || ['apartamento', 'moradia']) {
-      const base = `https://www.imovirtual.com/pt/resultados/comprar/${type}/${districtSlug}/${munSlug}`;
+      // Tipologies in path: apartamento,t2,t3
+      const tips = (criteria.tipologies || []).map(t => t.toLowerCase());
+      const typePath = tips.length > 0 ? `${type},${tips.join(',')}` : type;
+      const base = `https://www.imovirtual.com/pt/resultados/comprar/${typePath}/${districtSlug}/${munSlug}`;
       const params = new URLSearchParams();
 
       if (criteria.priceMax) params.set('priceMax', String(criteria.priceMax));
       if (criteria.priceMin) params.set('priceMin', String(criteria.priceMin));
-
-      // Rooms filter — Imovirtual uses word-based enum
-      for (const tip of criteria.tipologies || []) {
-        const roomWord = IMOVIRTUAL_ROOMS_MAP[tip.toUpperCase()];
-        if (roomWord) {
-          params.set('roomsNumber', `[${roomWord}]`);
-        }
-      }
+      params.set('ownerTypeSingleSelect', 'ALL');
 
       const qs = params.toString();
       urls.push({
@@ -102,27 +135,26 @@ const OLX_CATEGORY_MAP = {
 
 /**
  * OLX URL builder.
- * Format: /imoveis/{category}/q-{municipality-slug}/?params
- * OLX uses subcategory paths + search query, not municipality in the path.
+ * Format: /imoveis/{category}/q-{Municipality-Name}/?params
+ * OLX uses subcategory paths + search query with original casing.
+ * Tipology filter: search[filter_enum_tipologia][0]=t2
  */
 function buildOlxUrls(criteria) {
   const urls = [];
 
   for (const municipality of criteria.municipalities || []) {
-    const munSlug = toSlug(municipality);
+    // OLX keeps original casing, just replace spaces with hyphens
+    const munQuery = municipality.replace(/\s+/g, '-');
     for (const type of criteria.propertyTypes || ['apartamento', 'moradia']) {
       const category = OLX_CATEGORY_MAP[type] || 'apartamento-casa-a-venda';
-      const base = `https://www.olx.pt/imoveis/${category}/q-${munSlug}/`;
+      const base = `https://www.olx.pt/imoveis/${category}/q-${munQuery}/`;
       const params = new URLSearchParams();
 
       if (criteria.priceMax) params.set('search[filter_float_price:to]', String(criteria.priceMax));
       if (criteria.priceMin) params.set('search[filter_float_price:from]', String(criteria.priceMin));
 
       for (const tip of criteria.tipologies || []) {
-        const rooms = tipologyToRoomCount(tip);
-        if (rooms !== null) {
-          params.set('search[filter_enum_rooms][0]', String(rooms));
-        }
+        params.set('search[filter_enum_tipologia][0]', tip.toLowerCase());
       }
 
       const qs = params.toString();
@@ -138,7 +170,8 @@ function buildOlxUrls(criteria) {
 
 /**
  * CustoJusto URL builder.
- * Format: /{district-slug}/{municipality-slug}/imobiliario/{type-plural}?params
+ * Format: /{district-slug}/{municipality-slug}/imobiliario/{type-plural}-venda?ros=X&roe=Y&pe=Z&ps=W
+ * Prices and tipologies use indexed scales, not raw values.
  */
 function buildCustoJustoUrls(criteria) {
   const urls = [];
@@ -147,12 +180,22 @@ function buildCustoJustoUrls(criteria) {
   for (const municipality of criteria.municipalities || []) {
     const munSlug = toSlug(municipality);
     for (const type of criteria.propertyTypes || ['apartamento', 'moradia']) {
-      const typePlural = pluralize(type);
+      const typePlural = pluralize(type) + '-venda';
       const base = `https://www.custojusto.pt/${districtSlug}/${munSlug}/imobiliario/${typePlural}`;
       const params = new URLSearchParams();
 
-      if (criteria.priceMax) params.set('pe', String(criteria.priceMax));
-      if (criteria.priceMin) params.set('ps', String(criteria.priceMin));
+      // Price: convert euros to CustoJusto index scale
+      const peIdx = criteria.priceMax ? custoJustoPriceToIndex(criteria.priceMax, 'max') : null;
+      const psIdx = criteria.priceMin ? custoJustoPriceToIndex(criteria.priceMin, 'min') : null;
+      if (peIdx !== null) params.set('pe', String(peIdx));
+      if (psIdx !== null) params.set('ps', String(psIdx));
+
+      // Tipology: convert T2,T3 → ros/roe index range
+      const tipRange = custoJustoTipologyRange(criteria.tipologies);
+      if (tipRange) {
+        params.set('ros', String(tipRange.ros));
+        params.set('roe', String(tipRange.roe));
+      }
 
       const qs = params.toString();
       urls.push({
@@ -270,6 +313,8 @@ module.exports = {
   buildCustoJustoUrls,
   buildCasaSapoUrls,
   buildIdealistaUrls,
+  custoJustoPriceToIndex,
+  custoJustoTipologyRange,
   PORTAL_BUILDERS,
   DEFAULT_PORTALS,
 };

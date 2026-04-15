@@ -3,7 +3,7 @@
  */
 
 const assert = require('assert');
-const { buildSearchUrls, toSlug, buildImovirtualUrls, buildOlxUrls, buildCustoJustoUrls, buildCasaSapoUrls, buildIdealistaUrls } = require('../src/buyer-search/urlBuilder');
+const { buildSearchUrls, toSlug, buildImovirtualUrls, buildOlxUrls, buildCustoJustoUrls, buildCasaSapoUrls, buildIdealistaUrls, custoJustoPriceToIndex, custoJustoTipologyRange } = require('../src/buyer-search/urlBuilder');
 const { parseCliArgs, shouldRunJob, assessExtractionQuality, processJob, main, DEFAULT_COOLDOWN_HOURS } = require('../scripts/buyer-search-scraper');
 
 function test(name, fn) {
@@ -80,25 +80,31 @@ test('buildImovirtualUrls: correct URL format with filters', () => {
   const urls = buildImovirtualUrls(SAMPLE_CRITERIA);
   assert.strictEqual(urls.length, 1);
   const url = urls[0].url;
-  assert.ok(url.includes('/comprar/apartamento/viana-do-castelo/ponte-de-lima'), `URL path: ${url}`);
+  assert.ok(url.includes('/comprar/apartamento,t3/viana-do-castelo/ponte-de-lima'), `URL path: ${url}`);
   assert.ok(url.includes('priceMax=300000'), `priceMax: ${url}`);
-  assert.ok(url.includes('roomsNumber=%5BTHREE%5D'), `rooms: ${url}`);
+  assert.ok(url.includes('ownerTypeSingleSelect=ALL'), `ownerType: ${url}`);
+  assert.ok(!url.includes('roomsNumber'), `should not have roomsNumber: ${url}`);
 });
 
 test('buildOlxUrls: correct URL format with filters', () => {
   const urls = buildOlxUrls(SAMPLE_CRITERIA);
   assert.strictEqual(urls.length, 1);
   const url = urls[0].url;
-  assert.ok(url.includes('/imoveis/apartamento-casa-a-venda/q-ponte-de-lima/'), `URL path: ${url}`);
-  assert.ok(url.includes('300000'), `price: ${url}`);
+  assert.ok(url.includes('/imoveis/apartamento-casa-a-venda/q-Ponte-de-Lima/'), `URL path (original casing): ${url}`);
+  assert.ok(url.includes('filter_float_price%3Ato'), `price: ${url}`);
+  assert.ok(url.includes('filter_enum_tipologia'), `tipologia: ${url}`);
+  assert.ok(url.includes('t3'), `t3 value: ${url}`);
+  assert.ok(!url.includes('filter_enum_rooms'), `should not have rooms filter: ${url}`);
 });
 
-test('buildCustoJustoUrls: correct URL format with filters', () => {
+test('buildCustoJustoUrls: correct URL format with indexed scale', () => {
   const urls = buildCustoJustoUrls(SAMPLE_CRITERIA);
   assert.strictEqual(urls.length, 1);
   const url = urls[0].url;
-  assert.ok(url.includes('/viana-do-castelo/ponte-de-lima/imobiliario/apartamentos'), `URL path: ${url}`);
-  assert.ok(url.includes('pe=300000'), `price: ${url}`);
+  assert.ok(url.includes('/viana-do-castelo/ponte-de-lima/imobiliario/apartamentos-venda'), `URL path: ${url}`);
+  assert.ok(url.includes('pe=14'), `priceMax index 14=300k: ${url}`);
+  assert.ok(url.includes('ros=6'), `ros=6 (T3 min): ${url}`);
+  assert.ok(url.includes('roe=6'), `roe=6 (T3 max): ${url}`);
 });
 
 test('buildCasaSapoUrls: correct URL format', () => {
@@ -121,8 +127,47 @@ test('buildSearchUrls: multiple property types generate multiple URLs per portal
   const urls = buildSearchUrls(criteria);
   const imovirtualUrls = urls.filter(u => u.platform === 'imovirtual');
   assert.strictEqual(imovirtualUrls.length, 2);
-  assert.ok(imovirtualUrls.some(u => u.url.includes('/apartamento/')));
-  assert.ok(imovirtualUrls.some(u => u.url.includes('/moradia/')));
+  assert.ok(imovirtualUrls.some(u => u.url.includes('/apartamento,')));
+  assert.ok(imovirtualUrls.some(u => u.url.includes('/moradia,')));
+});
+
+console.log('\n--- buyer-search: CustoJusto price/tipology helpers ---');
+
+test('custoJustoPriceToIndex: exact matches', () => {
+  assert.strictEqual(custoJustoPriceToIndex(300000, 'max'), 14);
+  assert.strictEqual(custoJustoPriceToIndex(150000, 'min'), 9);
+  assert.strictEqual(custoJustoPriceToIndex(50000, 'max'), 5);
+  assert.strictEqual(custoJustoPriceToIndex(1000000, 'max'), 25);
+});
+
+test('custoJustoPriceToIndex: rounding — max rounds UP, min rounds DOWN', () => {
+  // 280k is between 250k (13) and 300k (14) → max rounds UP to 14
+  assert.strictEqual(custoJustoPriceToIndex(280000, 'max'), 14);
+  // 280k → min rounds DOWN to 13 (250k)
+  assert.strictEqual(custoJustoPriceToIndex(280000, 'min'), 13);
+  // 60k is between 50k (5) and 75k (6) → max rounds UP to 6
+  assert.strictEqual(custoJustoPriceToIndex(60000, 'max'), 6);
+});
+
+test('custoJustoPriceToIndex: edge cases', () => {
+  assert.strictEqual(custoJustoPriceToIndex(null, 'max'), null);
+  assert.strictEqual(custoJustoPriceToIndex(0, 'max'), null);
+  assert.strictEqual(custoJustoPriceToIndex(2000000, 'max'), 25);
+});
+
+test('custoJustoTipologyRange: single tipology', () => {
+  const r = custoJustoTipologyRange(['T3']);
+  assert.deepStrictEqual(r, { ros: 6, roe: 6 });
+});
+
+test('custoJustoTipologyRange: range T2-T3', () => {
+  const r = custoJustoTipologyRange(['T2', 'T3']);
+  assert.deepStrictEqual(r, { ros: 5, roe: 6 });
+});
+
+test('custoJustoTipologyRange: null/empty', () => {
+  assert.strictEqual(custoJustoTipologyRange(null), null);
+  assert.strictEqual(custoJustoTipologyRange([]), null);
 });
 
 console.log('\n--- buyer-search: CLI ---');
