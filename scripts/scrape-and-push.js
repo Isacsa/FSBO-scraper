@@ -553,7 +553,14 @@ async function processConfig(config, { apiUrl, apiKey, tenantId }, runtime = {})
     }
 
     // Push to APP Fastify API
-    const effectiveRunStatus = quality.verdict === 'DEGRADED' ? 'DEGRADED' : 'COMPLETED';
+    // Determine run_status: PARTIAL if we hit maxAds/maxPages limits (batch is not exhaustive),
+    // so the API does NOT remove listings absent from this batch.
+    const cfgMaxAds = options?.maxAds || 30;
+    const cfgMaxPages = options?.maxPages || 5;
+    const hitLimit = deduped.length >= cfgMaxAds || scrapeErrors.length > 0;
+    const effectiveRunStatus = quality.verdict === 'DEGRADED' ? 'DEGRADED'
+      : hitLimit ? 'PARTIAL'
+      : 'COMPLETED';
     try {
       const { payload } = await publishRun({
         platform,
