@@ -284,30 +284,12 @@ const DEFAULT_PORTALS = ['imovirtual', 'olx', 'custojusto', 'casasapo', 'idealis
  * @returns {{ platform: string, url: string, propertyType: string }[]}
  */
 function buildSearchUrls(criteria) {
-  if (!criteria) return [];
-
-  // Support both singular 'district' and plural 'districts' from API
-  let district = criteria.district || null;
-  const districts = criteria.districts || [];
-  const municipalities = criteria.municipalities || [];
-
-  if (!district && districts.length > 0) {
-    district = districts[0];
-  }
-
-  // If no district but municipalities provided, infer district from first municipality
-  if (!district && municipalities.length > 0) {
-    const { getDistrictForMunicipality } = require('../utils/municipalityDistrictMap');
-    district = getDistrictForMunicipality(municipalities[0]);
-  }
-
-  if (!municipalities.length && !district) {
+  if (!criteria || !criteria.municipalities || criteria.municipalities.length === 0) {
     return [];
   }
-
-  // If we have a district but no municipalities, generate district-level URLs
-  // If we have municipalities, use them for per-concelho URLs
-  criteria = { ...criteria, district, municipalities };
+  if (!criteria.district) {
+    return [];
+  }
 
   const portals = criteria.portals || DEFAULT_PORTALS;
   const allUrls = [];

@@ -168,28 +168,12 @@ async function processJob(job, connOpts, runtime = {}) {
     stdout = process.stdout,
   } = runtime;
 
-  const jobId = job.profileId || job.id;
-
-  // Map flat job fields to criteria object expected by buildSearchUrls.
-  // The API sends fields at root level (job.municipalities, job.districts, etc.),
-  // not nested under job.criteria.
-  const criteria = job.criteria || {
-    districts: job.districts || [],
-    municipalities: job.municipalities || [],
-    propertyTypes: job.propertyTypes || ['apartamento', 'moradia'],
-    tipologies: job.tipologies || [],
-    priceMin: job.priceMin || null,
-    priceMax: job.priceMax || null,
-    areaMin: job.areaMin || null,
-    areaMax: job.areaMax || null,
-    conditions: job.conditions || [],
-    fsboOnly: job.fsboOnly || false,
-  };
+  const jobId = job.id;
+  const criteria = job.criteria || {};
 
   log('info', `[buyer-search] Processing job`, {
     jobId,
     criteria: {
-      districts: criteria.districts,
       municipalities: criteria.municipalities,
       tipologies: criteria.tipologies,
       priceMax: criteria.priceMax,
@@ -271,10 +255,7 @@ async function processJob(job, connOpts, runtime = {}) {
 
     // Quality assessment
     const quality = assessExtractionQuality(salesOnly);
-    const hitLimit = deduped.length >= SCRAPE_OPTIONS.maxAds;
-    const effectiveRunStatus = quality.verdict === 'DEGRADED' ? 'DEGRADED'
-      : hitLimit ? 'PARTIAL'
-      : 'COMPLETED';
+    const effectiveRunStatus = quality.verdict === 'DEGRADED' ? 'DEGRADED' : 'COMPLETED';
 
     // Build payload
     const runId = deps.randomUUID();
