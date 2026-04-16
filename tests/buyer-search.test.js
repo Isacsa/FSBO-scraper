@@ -4,7 +4,7 @@
 
 const assert = require('assert');
 const { buildSearchUrls, toSlug, buildImovirtualUrls, buildOlxUrls, buildCustoJustoUrls, buildCasaSapoUrls, buildIdealistaUrls, custoJustoPriceToIndex, custoJustoTipologyRange } = require('../src/buyer-search/urlBuilder');
-const { parseCliArgs, shouldRunJob, assessExtractionQuality, processJob, main, DEFAULT_COOLDOWN_HOURS } = require('../scripts/buyer-search-scraper');
+const { parseCliArgs, shouldRunJob, buildCriteriaFromJob, assessExtractionQuality, processJob, main, DEFAULT_COOLDOWN_HOURS } = require('../scripts/buyer-search-scraper');
 
 function test(name, fn) {
   try {
@@ -168,6 +168,49 @@ test('custoJustoTipologyRange: range T2-T3', () => {
 test('custoJustoTipologyRange: null/empty', () => {
   assert.strictEqual(custoJustoTipologyRange(null), null);
   assert.strictEqual(custoJustoTipologyRange([]), null);
+});
+
+console.log('\n--- buyer-search: buildCriteriaFromJob ---');
+
+test('buildCriteriaFromJob: infers district from municipality when districts empty', () => {
+  const criteria = buildCriteriaFromJob({
+    districts: [],
+    municipalities: ['Ponte de Lima'],
+    tipologies: ['T3'],
+    propertyTypes: ['apartamento'],
+    priceMin: 150000,
+    priceMax: 300000,
+  });
+  assert.strictEqual(criteria.district, 'Viana do Castelo');
+  assert.deepStrictEqual(criteria.municipalities, ['Ponte de Lima']);
+  assert.deepStrictEqual(criteria.tipologies, ['T3']);
+  assert.strictEqual(criteria.priceMax, 300000);
+});
+
+test('buildCriteriaFromJob: uses districts[0] when available', () => {
+  const criteria = buildCriteriaFromJob({
+    districts: ['Porto'],
+    municipalities: ['Vila Nova de Gaia'],
+    tipologies: ['T2'],
+    propertyTypes: ['moradia'],
+    priceMax: 500000,
+  });
+  assert.strictEqual(criteria.district, 'Porto');
+});
+
+test('buildCriteriaFromJob: generates valid URLs end-to-end', () => {
+  const criteria = buildCriteriaFromJob({
+    districts: [],
+    municipalities: ['Ponte de Lima'],
+    tipologies: ['T3'],
+    propertyTypes: ['apartamento', 'moradia'],
+    priceMax: 300000,
+  });
+  const urls = buildSearchUrls(criteria);
+  assert.ok(urls.length >= 8, `expected >= 8 URLs (2 types × 4+ portals), got ${urls.length}`);
+  assert.ok(urls.some(u => u.platform === 'imovirtual'));
+  assert.ok(urls.some(u => u.platform === 'olx'));
+  assert.ok(urls.some(u => u.platform === 'custojusto'));
 });
 
 console.log('\n--- buyer-search: CLI ---');

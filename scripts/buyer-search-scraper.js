@@ -32,6 +32,7 @@ const { runPlatform } = require('../src/core/runPlatform');
 const { cleanItem } = require('../src/integration/dataCleaner');
 const { dedupeListInMemory } = require('../pipeline/deduplicate');
 const { filterSalesOnly } = require('../src/price-tracker/salesFilter');
+const { getDistrictForMunicipality } = require('../src/utils/municipalityDistrictMap');
 
 const SCRAPE_OPTIONS = {
   maxPages: 5,
@@ -160,6 +161,26 @@ async function scrapeSource(platform, url, deps, log) {
   }
 }
 
+/**
+ * Map flat job fields from the API to the criteria shape that buildSearchUrls expects.
+ * Infers district from municipality when districts is empty.
+ */
+function buildCriteriaFromJob(job) {
+  const municipalities = job.municipalities || [];
+  let district = (Array.isArray(job.districts) && job.districts[0]) || null;
+  if (!district && municipalities.length > 0) {
+    district = getDistrictForMunicipality(municipalities[0]);
+  }
+  return {
+    propertyTypes: job.propertyTypes || [],
+    tipologies: job.tipologies || [],
+    district,
+    municipalities,
+    priceMin: job.priceMin || null,
+    priceMax: job.priceMax || null,
+  };
+}
+
 async function processJob(job, connOpts, runtime = {}) {
   const {
     deps = defaultDeps,
@@ -168,8 +189,8 @@ async function processJob(job, connOpts, runtime = {}) {
     stdout = process.stdout,
   } = runtime;
 
-  const jobId = job.id;
-  const criteria = job.criteria || {};
+  const jobId = job.profileId || job.id;
+  const criteria = job.criteria || buildCriteriaFromJob(job);
 
   log('info', `[buyer-search] Processing job`, {
     jobId,
@@ -255,7 +276,8 @@ async function processJob(job, connOpts, runtime = {}) {
 
     // Quality assessment
     const quality = assessExtractionQuality(salesOnly);
-    const effectiveRunStatus = quality.verdict === 'DEGRADED' ? 'DEGRADED' : 'COMPLETED';
+    const hitLimit = allPlatformItems.length >= SCRAPE_OPTIONS.maxAds;
+    const effectiveRunStatus = quality.verdict === 'DEGRADED' ? 'DEGRADED' : (hitLimit ? 'PARTIAL' : 'COMPLETED');
 
     // Build payload
     const runId = deps.randomUUID();
@@ -353,7 +375,7 @@ async function main(runtime = {}) {
 
   // Filter by job ID if specified
   if (flags.jobId) {
-    jobs = jobs.filter(j => j.id === flags.jobId);
+    jobs = jobs.filter(j => (j.profileId || j.id) === flags.jobId);
     if (jobs.length === 0) {
       log('error', `[buyer-search] Job ${flags.jobId} not found`);
       exit(1);
@@ -386,9 +408,10 @@ async function main(runtime = {}) {
       const result = await processJob(job, connOpts, { deps, flags, log, stdout });
       allResults.push(result);
     } catch (err) {
-      log('error', `[buyer-search] Job ${job.id} failed`, { jobId: job.id, error: err.message });
+      const failedJobId = job.profileId || job.id;
+      log('error', `[buyer-search] Job ${failedJobId} failed`, { jobId: failedJobId, error: err.message });
       allResults.push({
-        jobId: job.id,
+        jobId: failedJobId,
         sourcesAttempted: 0,
         sourcesSucceeded: 0,
         totalItems: 0,
@@ -429,6 +452,7 @@ module.exports = {
   createLogger,
   parseCliArgs,
   shouldRunJob,
+  buildCriteriaFromJob,
   scrapeSource,
   processJob,
   assessExtractionQuality,
